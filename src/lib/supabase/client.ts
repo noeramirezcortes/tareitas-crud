@@ -2,6 +2,8 @@ import { createClient } from '@supabase/supabase-js'
 
 import { env } from '@/config/env'
 
+import type { Database } from './database.types'
+
 /**
  * Singleton del cliente de Supabase.
  *
@@ -12,4 +14,7 @@ import { env } from '@/config/env'
  * `lib/supabase/` y los `api.ts` de cada feature. Nunca desde
  * componentes ni páginas.
  */
-export const supabase = createClient(env.VITE_SUPABASE_URL, env.VITE_SUPABASE_ANON_KEY)
+export const supabase = createClient<Database>(
+  env.VITE_SUPABASE_URL,
+  env.VITE_SUPABASE_ANON_KEY,
+)

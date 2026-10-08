@@ -6,7 +6,12 @@
 > cambie en fases futuras.
 
 **Fecha:** 2026-10-07
-**Estado:** Aprobado — Fase 0 completada
+**Estado:** Aprobado — Fase 0 y Fase 1 completadas
+
+> **Fase 1 (2026-10-08):** auth completa (AuthProvider — decisión #10 realizada,
+> contexto en `auth-context.ts` separado del provider por fast-refresh) + CRUD de
+> `tasks` con RLS (migración `20261008000000_create_tasks.sql`).
+> `database.types.ts` escrito a mano hasta vincular la CLI (`pnpm db:types`).
 
 ---
 

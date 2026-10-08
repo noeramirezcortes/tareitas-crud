@@ -44,6 +44,39 @@ pnpm dev
 | `pnpm db:types`  | Regenera `src/lib/supabase/database.types.ts` desde la DB vinculada (requiere Supabase CLI + `supabase link`) |
 | `pnpm preview`   | Sirve el build de producción                             |
 
+## Rutas
+
+| Ruta        | Acceso    | Descripción                    |
+| ----------- | --------- | ------------------------------ |
+| `/`         | Pública   | Landing                        |
+| `/login`    | Visitante | Iniciar sesión                 |
+| `/register` | Visitante | Crear cuenta                   |
+| `/dashboard`| Protegida | Resumen de tareas              |
+| `/tasks`    | Protegida | CRUD completo de tareas        |
+
+Las rutas protegidas redirigen a `/login` si no hay sesión (guard UX; la
+seguridad real es RLS). Las de visitante redirigen a `/dashboard` si ya hay sesión.
+
+## Migraciones
+
+Las migraciones viven en `supabase/migrations/` (SQL reproducible, nunca editar
+una ya aplicada). Para aplicarlas:
+
+**Opción A — Dashboard (rápida):**
+Supabase Dashboard → SQL Editor → pegar el contenido del archivo → Run.
+
+**Opción B — CLI (recomendada a largo plazo):**
+```bash
+supabase login
+supabase link --project-ref TU-PROJECT-REF
+supabase db push
+pnpm db:types   # regenera src/lib/supabase/database.types.ts
+```
+
+> `src/lib/supabase/database.types.ts` está escrito a mano (Fase 1, solo tabla
+> `tasks`). Al vincular la CLI, `pnpm db:types` lo sobrescribe con los tipos
+> generados desde la DB real.
+
 ## Estructura
 
 ```
