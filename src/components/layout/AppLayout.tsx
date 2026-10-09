@@ -1,4 +1,4 @@
-import { CheckSquare, LayoutDashboard, ListTodo, LogOut } from 'lucide-react'
+import { CheckSquare, FolderKanban, LayoutDashboard, ListTodo, LogOut } from 'lucide-react'
 import { Link, NavLink, Outlet } from 'react-router-dom'
 
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -49,6 +49,10 @@ export function AppLayout() {
             <NavLink to="/tasks" className={navLinkClass}>
               <ListTodo className="size-4" aria-hidden="true" />
               <span className="hidden sm:inline">Tareas</span>
+            </NavLink>
+            <NavLink to="/projects" className={navLinkClass}>
+              <FolderKanban className="size-4" aria-hidden="true" />
+              <span className="hidden sm:inline">Proyectos</span>
             </NavLink>
           </nav>
 

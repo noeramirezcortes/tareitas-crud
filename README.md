@@ -51,11 +51,14 @@ pnpm dev
 | `/`         | Pública   | Landing                        |
 | `/login`    | Visitante | Iniciar sesión                 |
 | `/register` | Visitante | Crear cuenta                   |
-| `/dashboard`| Protegida | Resumen de tareas              |
-| `/tasks`    | Protegida | CRUD completo de tareas        |
+| `/dashboard`| Protegida | Métricas: pendientes, completadas, vencidas, próximas, prioridad, proyectos activos |
+| `/tasks`    | Protegida | CRUD de tareas + búsqueda y filtros vía URL (`?q=&project=&priority=&status=&due=&tag=`) |
+| `/projects` | Protegida | CRUD de proyectos              |
 
 Las rutas protegidas redirigen a `/login` si no hay sesión (guard UX; la
 seguridad real es RLS). Las de visitante redirigen a `/dashboard` si ya hay sesión.
+Los filtros de `/tasks` viven en la URL: son compartibles y sobreviven al
+navegar atrás/adelante.
 
 ## Migraciones
 

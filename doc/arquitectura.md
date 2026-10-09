@@ -6,12 +6,19 @@
 > cambie en fases futuras.
 
 **Fecha:** 2026-10-07
-**Estado:** Aprobado — Fase 0 y Fase 1 completadas
+**Estado:** Aprobado — Fases 0, 1 y 2 completadas
 
 > **Fase 1 (2026-10-08):** auth completa (AuthProvider — decisión #10 realizada,
 > contexto en `auth-context.ts` separado del provider por fast-refresh) + CRUD de
 > `tasks` con RLS (migración `20261008000000_create_tasks.sql`).
 > `database.types.ts` escrito a mano hasta vincular la CLI (`pnpm db:types`).
+>
+> **Fase 2 (2026-10-09):** `projects`, `tags` + `task_tags` (M2M), ampliación de
+> `tasks` (`project_id`, `priority`, `due_date`, `status` — `completed` migra a
+> `status='done'` y se elimina la columna: una sola fuente de verdad). Filtros
+> server-side (PostgREST) con estado en la URL (`useSearchParams`). Dashboard
+> con métricas reales sin librerías de gráficos. Migración
+> `20261009000000_fase2_projects_tags.sql`.
 
 ---
 

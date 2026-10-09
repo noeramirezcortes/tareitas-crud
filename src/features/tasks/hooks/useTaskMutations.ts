@@ -2,13 +2,14 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 
 import { createTask, deleteTask, taskKeys, updateTask } from '../api'
-import type { TaskInsert, TaskUpdate } from '../types'
+import type { TaskInsert, TaskStatus, TaskUpdate } from '../types'
 
 export function useCreateTask() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (input: TaskInsert) => createTask(input),
+    mutationFn: ({ tagIds = [], ...input }: TaskInsert & { tagIds?: string[] }) =>
+      createTask(input, tagIds),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: taskKeys.all })
       toast.success('Tarea creada')
@@ -23,7 +24,8 @@ export function useUpdateTask() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ id, ...input }: TaskUpdate & { id: string }) => updateTask(id, input),
+    mutationFn: ({ id, tagIds, ...input }: TaskUpdate & { id: string; tagIds?: string[] }) =>
+      updateTask(id, input, tagIds),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: taskKeys.all })
       toast.success('Tarea actualizada')
@@ -38,8 +40,8 @@ export function useToggleTask() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ id, completed }: { id: string; completed: boolean }) =>
-      updateTask(id, { completed }),
+    mutationFn: ({ id, status }: { id: string; status: TaskStatus }) =>
+      updateTask(id, { status }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: taskKeys.all })
     },

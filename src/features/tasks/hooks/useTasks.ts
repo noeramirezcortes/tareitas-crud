@@ -1,19 +1,22 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { getTask, listTasks, taskKeys } from '../api'
-import type { Task } from '../types'
+import type { TaskFilters, TaskWithRelations } from '../types'
 
-export function useTasks() {
+/**
+ * Lista de tareas con filtros (aplicados en servidor).
+ * La queryKey incluye los filtros: cada combinación tiene su caché.
+ */
+export function useTasks(filters: TaskFilters = {}) {
   return useQuery({
-    queryKey: taskKeys.all,
-    queryFn: listTasks,
+    queryKey: taskKeys.list(filters),
+    queryFn: () => listTasks(filters),
   })
 }
 
 /**
- * Consulta una tarea por id (operación "consultar" del CRUD).
- * Usa la lista cacheada como placeholder para mostrar al instante
- * mientras llega el dato fresco de la DB.
+ * Consulta una tarea por id. Usa cualquier lista cacheada como
+ * placeholder mientras llega el dato fresco de la DB.
  */
 export function useTask(id: string | null) {
   const queryClient = useQueryClient()
@@ -24,7 +27,14 @@ export function useTask(id: string | null) {
     enabled: id !== null,
     placeholderData: () => {
       if (!id) return undefined
-      return queryClient.getQueryData<Task[]>(taskKeys.all)?.find((task) => task.id === id)
+      const cachedLists = queryClient.getQueriesData<TaskWithRelations[]>({
+        queryKey: taskKeys.all,
+      })
+      for (const [, tasks] of cachedLists) {
+        const found = tasks?.find((task) => task.id === id)
+        if (found) return found
+      }
+      return undefined
     },
   })
 }

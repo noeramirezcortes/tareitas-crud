@@ -1,12 +1,12 @@
 import { TaskItem } from './TaskItem'
-import type { Task } from '../types'
+import type { TaskWithRelations } from '../types'
 
 interface TaskListProps {
-  tasks: Task[]
-  onToggle: (task: Task) => void
-  onView: (task: Task) => void
-  onEdit: (task: Task) => void
-  onDelete: (task: Task) => void
+  tasks: TaskWithRelations[]
+  onToggle: (task: TaskWithRelations) => void
+  onView: (task: TaskWithRelations) => void
+  onEdit: (task: TaskWithRelations) => void
+  onDelete: (task: TaskWithRelations) => void
 }
 
 export function TaskList({ tasks, onToggle, onView, onEdit, onDelete }: TaskListProps) {

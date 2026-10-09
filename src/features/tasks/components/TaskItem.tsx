@@ -1,43 +1,86 @@
-import { Eye, Pencil, Trash2 } from 'lucide-react'
+import { Calendar, Eye, Folder, Pencil, Trash2 } from 'lucide-react'
 
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
+import { TagBadge } from '@/features/tags/components/TagBadge'
 import { cn } from '@/lib/utils'
+import { formatDueDate, isOverdue } from '@/utils/dates'
 
-import type { Task } from '../types'
+import type { TaskPriority, TaskWithRelations } from '../types'
+import { PRIORITY_LABELS } from '../types'
 
 interface TaskItemProps {
-  task: Task
-  onToggle: (task: Task) => void
-  onView: (task: Task) => void
-  onEdit: (task: Task) => void
-  onDelete: (task: Task) => void
+  task: TaskWithRelations
+  onToggle: (task: TaskWithRelations) => void
+  onView: (task: TaskWithRelations) => void
+  onEdit: (task: TaskWithRelations) => void
+  onDelete: (task: TaskWithRelations) => void
+}
+
+const PRIORITY_VARIANTS: Record<TaskPriority, 'destructive' | 'secondary' | 'outline'> = {
+  high: 'destructive',
+  medium: 'secondary',
+  low: 'outline',
 }
 
 export function TaskItem({ task, onToggle, onView, onEdit, onDelete }: TaskItemProps) {
+  const isDone = task.status === 'done'
+  const overdue = !isDone && isOverdue(task.due_date)
+
   return (
     <li className="flex items-start gap-3 rounded-lg border bg-card p-3">
       <Checkbox
         id={`task-${task.id}`}
-        checked={task.completed}
+        checked={isDone}
         onCheckedChange={() => onToggle(task)}
         className="mt-1"
-        aria-label={task.completed ? 'Marcar como pendiente' : 'Marcar como completada'}
+        aria-label={isDone ? 'Marcar como pendiente' : 'Marcar como completada'}
       />
 
-      <div className="min-w-0 flex-1">
+      <div className="min-w-0 flex-1 space-y-1.5">
         <label
           htmlFor={`task-${task.id}`}
           className={cn(
             'block cursor-pointer font-medium',
-            task.completed && 'text-muted-foreground line-through',
+            isDone && 'text-muted-foreground line-through',
           )}
         >
           {task.title}
         </label>
+
         {task.description && (
-          <p className="mt-0.5 line-clamp-2 text-sm text-muted-foreground">{task.description}</p>
+          <p className="line-clamp-2 text-sm text-muted-foreground">{task.description}</p>
         )}
+
+        <div className="flex flex-wrap items-center gap-1.5">
+          <Badge variant={PRIORITY_VARIANTS[task.priority]}>
+            {PRIORITY_LABELS[task.priority]}
+          </Badge>
+
+          {task.status === 'in_progress' && <Badge variant="default">En progreso</Badge>}
+
+          {task.project && (
+            <Badge variant="outline" className="font-normal">
+              <Folder className="size-3" aria-hidden="true" />
+              {task.project.name}
+            </Badge>
+          )}
+
+          {task.due_date && (
+            <Badge
+              variant="outline"
+              className={cn('font-normal', overdue && 'border-destructive text-destructive')}
+            >
+              <Calendar className="size-3" aria-hidden="true" />
+              {formatDueDate(task.due_date)}
+            </Badge>
+          )}
+
+          {task.tags.map((tag) => (
+            <TagBadge key={tag.id} tag={tag} />
+          ))}
+        </div>
       </div>
 
       <div className="flex shrink-0 gap-1">

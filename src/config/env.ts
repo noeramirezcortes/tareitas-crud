@@ -7,7 +7,13 @@ import { z } from 'zod'
  * Nunca poner aquí la service_role key ni ningún secreto.
  */
 const envSchema = z.object({
-  VITE_SUPABASE_URL: z.url(),
+  // La URL debe ser la base del proyecto, sin paths como /rest/v1
+  VITE_SUPABASE_URL: z
+    .url()
+    .refine((url) => ['/', ''].includes(new URL(url).pathname), {
+      message:
+        'VITE_SUPABASE_URL debe ser la URL base del proyecto (sin /rest/v1 ni otros paths)',
+    }),
   VITE_SUPABASE_ANON_KEY: z.string().min(1),
 })
 
