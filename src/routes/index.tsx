@@ -3,7 +3,9 @@ import { Route, Routes } from 'react-router-dom'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { DashboardPage } from '@/pages/DashboardPage'
 import { HomePage } from '@/pages/HomePage'
+import { AcceptInvitationPage } from '@/pages/AcceptInvitationPage'
 import { LoginPage } from '@/pages/LoginPage'
+import { OrganizationPage } from '@/pages/OrganizationPage'
 import { ProjectsPage } from '@/pages/ProjectsPage'
 import { RegisterPage } from '@/pages/RegisterPage'
 import { TasksPage } from '@/pages/TasksPage'
@@ -26,6 +28,8 @@ export function AppRoutes() {
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/tasks" element={<TasksPage />} />
           <Route path="/projects" element={<ProjectsPage />} />
+          <Route path="/organization" element={<OrganizationPage />} />
+          <Route path="/invite/:token" element={<AcceptInvitationPage />} />
         </Route>
       </Route>
 

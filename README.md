@@ -43,6 +43,7 @@ pnpm dev
 | `pnpm typecheck` | Verificación de tipos (`tsc -b`)                         |
 | `pnpm db:types`  | Regenera `src/lib/supabase/database.types.ts` desde la DB vinculada (requiere Supabase CLI + `supabase link`) |
 | `pnpm preview`   | Sirve el build de producción                             |
+| `pnpm test:rls`  | Pruebas de aislamiento multi-tenant y reglas de roles sobre las migraciones reales (PGlite, sin Supabase) |
 
 ## Rutas
 
@@ -54,6 +55,8 @@ pnpm dev
 | `/dashboard`| Protegida | Métricas: pendientes, completadas, vencidas, próximas, prioridad, proyectos activos |
 | `/tasks`    | Protegida | CRUD de tareas + búsqueda y filtros vía URL (`?q=&project=&priority=&status=&due=&tag=`) |
 | `/projects` | Protegida | CRUD de proyectos              |
+| `/organization` | Protegida | Workspaces, miembros, roles e invitaciones (owner/admin) |
+| `/invite/:token` | Protegida | Aceptar una invitación (el email de la cuenta debe ser el invitado) |
 
 Las rutas protegidas redirigen a `/login` si no hay sesión (guard UX; la
 seguridad real es RLS). Las de visitante redirigen a `/dashboard` si ya hay sesión.
@@ -63,7 +66,14 @@ navegar atrás/adelante.
 ## Migraciones
 
 Las migraciones viven en `supabase/migrations/` (SQL reproducible, nunca editar
-una ya aplicada). Para aplicarlas:
+una ya aplicada). Aplicarlas **en orden** (el nombre ya lo ordena):
+
+1. `20261008000000_create_tasks.sql` (fase 1)
+2. `20261009000000_fase2_projects_tags.sql` (fase 2)
+3. `20261010000000_fase3_multitenant.sql` (fase 3: organizaciones, workspaces, memberships, RLS)
+4. `20261011000000_fase3_invitations_onboarding.sql` (fase 3: invitaciones, reglas de owner, onboarding)
+
+Cada archivo va envuelto en `begin; … commit;`. Para aplicarlas:
 
 **Opción A — Dashboard (rápida):**
 Supabase Dashboard → SQL Editor → pegar el contenido del archivo → Run.

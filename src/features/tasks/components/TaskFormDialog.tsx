@@ -1,6 +1,3 @@
-import { useProjects } from '@/features/projects/hooks/useProjects'
-import { useTags } from '@/features/tags/hooks/useTags'
-
 import {
   Dialog,
   DialogContent,
@@ -8,6 +5,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { useProjects } from '@/features/projects/hooks/useProjects'
+import { useTags } from '@/features/tags/hooks/useTags'
+import { useWorkspace } from '@/features/workspaces/WorkspaceContext'
 
 import { useCreateTask, useUpdateTask } from '../hooks/useTaskMutations'
 import type { TaskFormValues } from '../schemas'
@@ -22,8 +22,10 @@ interface TaskFormDialogProps {
 }
 
 export function TaskFormDialog({ open, onOpenChange, task }: TaskFormDialogProps) {
-  const { data: projects } = useProjects()
-  const { data: tags } = useTags()
+  const { currentWorkspace } = useWorkspace()
+  const workspaceId = currentWorkspace?.id ?? null
+  const { data: projects } = useProjects(workspaceId)
+  const { data: tags } = useTags(workspaceId)
   const createTask = useCreateTask()
   const updateTask = useUpdateTask()
   const isEditing = task != null
@@ -38,14 +40,12 @@ export function TaskFormDialog({ open, onOpenChange, task }: TaskFormDialogProps
       status: values.status,
       due_date: values.due_date ? values.due_date : null,
     }
+    const onSuccess = () => onOpenChange(false)
 
-    if (isEditing) {
-      updateTask.mutate(
-        { id: task.id, ...input, tagIds: values.tagIds },
-        { onSuccess: () => onOpenChange(false) },
-      )
+    if (task) {
+      updateTask.mutate({ id: task.id, ...input, tagIds: values.tagIds }, { onSuccess })
     } else {
-      createTask.mutate({ ...input, tagIds: values.tagIds }, { onSuccess: () => onOpenChange(false) })
+      createTask.mutate({ ...input, tagIds: values.tagIds }, { onSuccess })
     }
   }
 
@@ -59,11 +59,11 @@ export function TaskFormDialog({ open, onOpenChange, task }: TaskFormDialogProps
           </DialogDescription>
         </DialogHeader>
 
-        {/* Render condicional: reinicia el estado del form en cada apertura */}
-        {open && (
+        {/* Render condicional: reinicia el estado del formulario en cada apertura */}
+        {open && workspaceId && (
           <TaskForm
             defaultValues={
-              isEditing
+              task
                 ? {
                     title: task.title,
                     description: task.description ?? '',
@@ -80,6 +80,7 @@ export function TaskFormDialog({ open, onOpenChange, task }: TaskFormDialogProps
             submitLabel={isEditing ? 'Guardar cambios' : 'Crear tarea'}
             projects={projects ?? []}
             tags={tags ?? []}
+            workspaceId={workspaceId}
           />
         )}
       </DialogContent>

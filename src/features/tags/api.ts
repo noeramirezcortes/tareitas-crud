@@ -1,23 +1,22 @@
 import { supabase } from '@/lib/supabase/client'
 
-import type { Tag, TagInsert } from './types'
-
 export const tagKeys = {
   all: ['tags'] as const,
+  byWorkspace: (wsId: string) => ['tags', 'workspace', wsId] as const,
 }
 
-/**
- * Acceso a datos de tags y del vínculo task_tags (M2M).
- * RLS en PostgreSQL limita cada fila a su propietario.
- */
-export async function listTags(): Promise<Tag[]> {
-  const { data, error } = await supabase.from('tags').select('*').order('name')
+export async function listTags(workspaceId: string): Promise<import('@/features/tags/types').Tag[]> {
+  const { data, error } = await supabase
+    .from('tags')
+    .select('*')
+    .eq('workspace_id', workspaceId)
+    .order('name')
 
   if (error) throw error
   return data
 }
 
-export async function createTag(input: TagInsert): Promise<Tag> {
+export async function createTag(input: import('@/features/tags/types').TagInsert): Promise<import('@/features/tags/types').Tag> {
   const { data, error } = await supabase
     .from('tags')
     .insert({ ...input, name: input.name.trim() })
@@ -34,10 +33,6 @@ export async function deleteTag(id: string): Promise<void> {
   if (error) throw error
 }
 
-/**
- * Sincroniza las etiquetas de una tarea: borra los vínculos actuales
- * e inserta los nuevos (task_tags es PK compuesta, no se actualiza).
- */
 export async function setTaskTags(taskId: string, tagIds: string[]): Promise<void> {
   const { error: deleteError } = await supabase
     .from('task_tags')

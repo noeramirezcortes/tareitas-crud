@@ -8,20 +8,15 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useSession } from '@/features/auth/hooks/useSession'
 import { useProjects } from '@/features/projects/hooks/useProjects'
 import { useTasks } from '@/features/tasks/hooks/useTasks'
-import type { TaskPriority } from '@/features/tasks/types'
-import { PRIORITY_LABELS } from '@/features/tasks/types'
+import { useWorkspace } from '@/features/workspaces/WorkspaceContext'
+import { PRIORITY_LABELS, PRIORITY_BAR_COLORS } from '@/features/tasks/types'
 import { isDueSoon, isOverdue } from '@/utils/dates'
-
-const PRIORITY_BAR_COLORS: Record<TaskPriority, string> = {
-  high: 'bg-red-500',
-  medium: 'bg-amber-500',
-  low: 'bg-emerald-500',
-}
 
 export function DashboardPage() {
   const { user } = useSession()
+  const { currentWorkspace } = useWorkspace()
   const { data: tasks, isLoading, isError, refetch } = useTasks()
-  const { data: projects } = useProjects()
+  const { data: projects } = useProjects(currentWorkspace?.id ?? null)
 
   if (isLoading) return <LoadingSpinner />
   if (isError) {
@@ -63,7 +58,7 @@ export function DashboardPage() {
   ]
 
   // Distribución por prioridad (solo tareas no completadas: es lo accionable)
-  const priorityDist = (['high', 'medium', 'low'] as TaskPriority[]).map((priority) => ({
+  const priorityDist = (['high', 'medium', 'low'] as import('@/features/tasks/types').TaskPriority[]).map((priority) => ({
     priority,
     count: pending.filter((task) => task.priority === priority).length,
   }))

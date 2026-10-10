@@ -19,6 +19,15 @@
 > server-side (PostgREST) con estado en la URL (`useSearchParams`). Dashboard
 > con métricas reales sin librerías de gráficos. Migración
 > `20261009000000_fase2_projects_tags.sql`.
+>
+> **Fase 3 (2026-10-09):** Arquitectura multi-tenant: `organizations`, `workspaces`,
+> `memberships` (roles: owner/admin/member), `invitations`. Esquema migrado:
+> `projects` → `workspace_id`, `tags` → `workspace_id`, `tasks` sin `user_id`
+> (pertenencia vía project→workspace→org), `task_tags` RLS vía project→workspace.
+> RLS helper functions: `user_has_workspace_access()`, `user_is_org_admin()`.
+> UI: selector organización/workspace, invitaciones por email, gestión miembros/roles.
+> Migración: `20261010000000_fase3_multitenant.sql` con backfill automático de
+> org/workspace personal para usuarios existentes.
 
 ---
 

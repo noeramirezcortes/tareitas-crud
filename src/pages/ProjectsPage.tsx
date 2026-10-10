@@ -12,10 +12,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ProjectFormDialog } from '@/features/projects/components/ProjectFormDialog'
 import { useDeleteProject } from '@/features/projects/hooks/useProjectMutations'
 import { useProjects } from '@/features/projects/hooks/useProjects'
+import { useWorkspace } from '@/features/workspaces/WorkspaceContext'
 import type { ProjectWithTaskCount } from '@/features/projects/types'
 
 export function ProjectsPage() {
-  const { data: projects, isLoading, isError, refetch } = useProjects()
+  const { currentWorkspace } = useWorkspace()
+  const { data: projects, isLoading, isError, refetch } = useProjects(currentWorkspace?.id ?? null)
   const deleteProject = useDeleteProject()
 
   const [formOpen, setFormOpen] = useState(false)

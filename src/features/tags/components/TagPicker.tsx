@@ -15,15 +15,13 @@ interface TagPickerProps {
   /** Ids actualmente seleccionados. */
   value: string[]
   onChange: (tagIds: string[]) => void
+  /** ID del workspace actual (para crear etiquetas en el workspace correcto). */
+  workspaceId: string
   /** Crear etiqueta al vuelo; debe devolver la etiqueta creada. */
-  onCreateTag: (name: string) => Promise<Tag>
+  onCreateTag: (name: string, workspaceId: string) => Promise<import('@/features/tags/types').Tag>
 }
 
-/**
- * Multi-select de etiquetas con creación inline.
- * Componente controlado: el formulario padre guarda los ids.
- */
-export function TagPicker({ options, value, onChange, onCreateTag }: TagPickerProps) {
+export function TagPicker({ options, value, onChange, workspaceId, onCreateTag }: TagPickerProps) {
   const [open, setOpen] = useState(false)
   const [newName, setNewName] = useState('')
   const [isCreating, setIsCreating] = useState(false)
@@ -51,7 +49,7 @@ export function TagPicker({ options, value, onChange, onCreateTag }: TagPickerPr
     setIsCreating(true)
     setCreateError(null)
     try {
-      const created = await onCreateTag(parsed.data)
+      const created = await onCreateTag(parsed.data, workspaceId)
       onChange([...value, created.id])
       setNewName('')
     } catch {

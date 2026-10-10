@@ -1,8 +1,6 @@
-import { Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 
-import { Button } from '@/components/ui/button'
 import {
   Dialog,
   DialogContent,
@@ -10,7 +8,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
 
 import { useCreateTag, useDeleteTag } from '../hooks/useTagMutations'
 import { useTags } from '../hooks/useTags'
@@ -20,14 +17,11 @@ import { TagBadge } from './TagBadge'
 interface ManageTagsDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+  workspaceId: string
 }
 
-/**
- * Gestión de etiquetas reutilizables: crear y eliminar.
- * (La asignación a tareas se hace desde el formulario de tarea.)
- */
-export function ManageTagsDialog({ open, onOpenChange }: ManageTagsDialogProps) {
-  const { data: tags } = useTags()
+export function ManageTagsDialog({ open, onOpenChange, workspaceId }: ManageTagsDialogProps) {
+  const { data: tags } = useTags(workspaceId)
   const createTag = useCreateTag()
   const deleteTag = useDeleteTag()
   const [name, setName] = useState('')
@@ -38,7 +32,7 @@ export function ManageTagsDialog({ open, onOpenChange }: ManageTagsDialogProps) 
       toast.error(parsed.error.issues[0]?.message ?? 'Nombre inválido')
       return
     }
-    createTag.mutate(parsed.data, {
+    createTag.mutate({ name: parsed.data, workspace_id: workspaceId }, {
       onSuccess: () => {
         setName('')
         toast.success('Etiqueta creada')
@@ -58,7 +52,7 @@ export function ManageTagsDialog({ open, onOpenChange }: ManageTagsDialogProps) 
         </DialogHeader>
 
         <div className="flex gap-2">
-          <Input
+          <input
             value={name}
             onChange={(event) => setName(event.target.value)}
             onKeyDown={(event) => {
@@ -68,14 +62,16 @@ export function ManageTagsDialog({ open, onOpenChange }: ManageTagsDialogProps) 
               }
             }}
             placeholder="Nueva etiqueta…"
+            className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm"
           />
-          <Button
+          <button
             type="button"
             onClick={handleCreate}
             disabled={!name.trim() || createTag.isPending}
+            className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
           >
             Crear
-          </Button>
+          </button>
         </div>
 
         <ul className="max-h-60 space-y-1 overflow-y-auto">
@@ -85,16 +81,17 @@ export function ManageTagsDialog({ open, onOpenChange }: ManageTagsDialogProps) 
           {tags?.map((tag) => (
             <li key={tag.id} className="flex items-center justify-between gap-2">
               <TagBadge tag={tag} />
-              <Button
-                variant="ghost"
-                size="icon"
+              <button
+                type="button"
                 onClick={() => deleteTag.mutate(tag.id)}
                 disabled={deleteTag.isPending}
                 aria-label={`Eliminar etiqueta ${tag.name}`}
-                className="size-8 text-destructive hover:text-destructive"
+                className="rounded size-8 text-destructive hover:bg-destructive/10"
               >
-                <Trash2 className="size-4" />
-              </Button>
+                <svg className="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v12m-6 0h14" />
+                </svg>
+              </button>
             </li>
           ))}
         </ul>

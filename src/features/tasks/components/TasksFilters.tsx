@@ -1,9 +1,6 @@
-import { Search, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import {
   Select,
   SelectContent,
@@ -13,52 +10,31 @@ import {
 } from '@/components/ui/select'
 import { useProjects } from '@/features/projects/hooks/useProjects'
 import { useTags } from '@/features/tags/hooks/useTags'
+import { useWorkspace } from '@/features/workspaces/WorkspaceContext'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 
 import type { TaskPriority, TaskStatus } from '../types'
 import { PRIORITY_LABELS, STATUS_LABELS, TASK_PRIORITIES, TASK_STATUSES } from '../types'
 
-const DUE_OPTIONS = [
-  { value: 'overdue', label: 'Vencidas' },
-  { value: 'today', label: 'Vencen hoy' },
-  { value: 'week', label: 'Próximos 7 días' },
-] as const
-
-/**
- * Barra de búsqueda y filtros de la lista de tareas.
- * Los filtros viven en la URL (?q=&project=&priority=…): son
- * compartibles y sobreviven a la navegación atrás/adelante.
- */
 export function TasksFilters() {
+  const { currentWorkspace } = useWorkspace()
   const [searchParams, setSearchParams] = useSearchParams()
-  const { data: projects } = useProjects()
-  const { data: tags } = useTags()
+  const { data: projects } = useProjects(currentWorkspace?.id ?? null)
+  const { data: tags } = useTags(currentWorkspace?.id ?? null)
 
   const urlText = searchParams.get('q') ?? ''
   const [textInput, setTextInput] = useState(urlText)
   const debouncedText = useDebouncedValue(textInput, 300)
 
-  // Sincroniza el input cuando la URL cambia por fuera (ej. limpiar filtros)
+  // Sincroniza el texto con debounce hacia la URL (?q=)
   useEffect(() => {
-    setTextInput(urlText)
-  }, [urlText])
-
-  const setParam = (key: string, value: string) => {
+    const term = debouncedText.trim()
+    if (term === urlText) return
     const next = new URLSearchParams(searchParams)
-    if (value) {
-      next.set(key, value)
-    } else {
-      next.delete(key)
-    }
+    if (term) next.set('q', term)
+    else next.delete('q')
     setSearchParams(next, { replace: true })
-  }
-
-  useEffect(() => {
-    if (debouncedText !== urlText) {
-      setParam('q', debouncedText.trim())
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedText])
+  }, [debouncedText, urlText, searchParams, setSearchParams])
 
   const hasActiveFilters =
     urlText !== '' ||
@@ -71,11 +47,16 @@ export function TasksFilters() {
   return (
     <div className="space-y-3">
       <div className="relative">
-        <Search
+        <svg
           className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
           aria-hidden="true"
-        />
-        <Input
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        </svg>
+        <input
           value={textInput}
           onChange={(event) => setTextInput(event.target.value)}
           placeholder="Buscar por título o descripción…"
@@ -87,7 +68,12 @@ export function TasksFilters() {
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
         <Select
           value={searchParams.get('project') ?? 'all'}
-          onValueChange={(value) => setParam('project', value === 'all' ? '' : value)}
+          onValueChange={(value) => {
+            const next = new URLSearchParams(searchParams)
+            if (value === 'all') next.delete('project')
+            else next.set('project', value)
+            setSearchParams(next, { replace: true })
+          }}
         >
           <SelectTrigger aria-label="Filtrar por proyecto">
             <SelectValue />
@@ -105,7 +91,12 @@ export function TasksFilters() {
 
         <Select
           value={searchParams.get('priority') ?? 'all'}
-          onValueChange={(value) => setParam('priority', value === 'all' ? '' : value)}
+          onValueChange={(value) => {
+            const next = new URLSearchParams(searchParams)
+            if (value === 'all') next.delete('priority')
+            else next.set('priority', value)
+            setSearchParams(next, { replace: true })
+          }}
         >
           <SelectTrigger aria-label="Filtrar por prioridad">
             <SelectValue />
@@ -122,7 +113,12 @@ export function TasksFilters() {
 
         <Select
           value={searchParams.get('status') ?? 'all'}
-          onValueChange={(value) => setParam('status', value === 'all' ? '' : value)}
+          onValueChange={(value) => {
+            const next = new URLSearchParams(searchParams)
+            if (value === 'all') next.delete('status')
+            else next.set('status', value)
+            setSearchParams(next, { replace: true })
+          }}
         >
           <SelectTrigger aria-label="Filtrar por estado">
             <SelectValue />
@@ -139,24 +135,32 @@ export function TasksFilters() {
 
         <Select
           value={searchParams.get('due') ?? 'all'}
-          onValueChange={(value) => setParam('due', value === 'all' ? '' : value)}
+          onValueChange={(value) => {
+            const next = new URLSearchParams(searchParams)
+            if (value === 'all') next.delete('due')
+            else next.set('due', value)
+            setSearchParams(next, { replace: true })
+          }}
         >
           <SelectTrigger aria-label="Filtrar por fecha">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Cualquier fecha</SelectItem>
-            {DUE_OPTIONS.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                {option.label}
-              </SelectItem>
-            ))}
+            <SelectItem value="overdue">Vencidas</SelectItem>
+            <SelectItem value="today">Vencen hoy</SelectItem>
+            <SelectItem value="week">Próximos 7 días</SelectItem>
           </SelectContent>
         </Select>
 
         <Select
           value={searchParams.get('tag') ?? 'all'}
-          onValueChange={(value) => setParam('tag', value === 'all' ? '' : value)}
+          onValueChange={(value) => {
+            const next = new URLSearchParams(searchParams)
+            if (value === 'all') next.delete('tag')
+            else next.set('tag', value)
+            setSearchParams(next, { replace: true })
+          }}
         >
           <SelectTrigger aria-label="Filtrar por etiqueta">
             <SelectValue />
@@ -172,10 +176,16 @@ export function TasksFilters() {
         </Select>
 
         {hasActiveFilters && (
-          <Button variant="ghost" onClick={clearFilters} className="justify-start">
-            <X className="size-4" aria-hidden="true" />
+          <button
+            type="button"
+            onClick={clearFilters}
+            className="flex items-center gap-1 rounded-md px-2 py-1.5 text-sm font-medium text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+          >
+            <svg className="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
             Limpiar filtros
-          </Button>
+          </button>
         )}
       </div>
     </div>

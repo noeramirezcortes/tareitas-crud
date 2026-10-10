@@ -29,12 +29,9 @@ interface TaskFormProps {
   /** Proyectos y etiquetas disponibles (cargados por el padre). */
   projects: { id: string; name: string }[]
   tags: Tag[]
+  workspaceId: string
 }
 
-/**
- * Formulario de tarea compartido por crear y editar.
- * Validación con zod vía React Hook Form.
- */
 export function TaskForm({
   defaultValues,
   onSubmit,
@@ -43,6 +40,7 @@ export function TaskForm({
   pendingLabel = 'Guardando…',
   projects,
   tags,
+  workspaceId,
 }: TaskFormProps) {
   const createTag = useCreateTag()
 
@@ -177,7 +175,8 @@ export function TaskForm({
               options={tags}
               value={field.value}
               onChange={field.onChange}
-              onCreateTag={(name) => createTag.mutateAsync(name)}
+              workspaceId={workspaceId}
+              onCreateTag={(name, workspaceId) => createTag.mutateAsync({ name, workspace_id: workspaceId })}
             />
           )}
         />

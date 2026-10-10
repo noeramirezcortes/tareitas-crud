@@ -5,6 +5,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { useWorkspace } from '@/features/workspaces/WorkspaceContext'
 
 import { useCreateProject, useUpdateProject } from '../hooks/useProjectMutations'
 import type { ProjectFormValues } from '../schemas'
@@ -19,21 +20,24 @@ interface ProjectFormDialogProps {
 }
 
 export function ProjectFormDialog({ open, onOpenChange, project }: ProjectFormDialogProps) {
+  const { currentWorkspace } = useWorkspace()
   const createProject = useCreateProject()
   const updateProject = useUpdateProject()
   const isEditing = project != null
   const isPending = createProject.isPending || updateProject.isPending
 
   const handleSubmit = (values: ProjectFormValues) => {
+    if (!currentWorkspace) return
     const input = {
       name: values.name,
       description: values.description ? values.description : null,
     }
+    const onSuccess = () => onOpenChange(false)
 
-    if (isEditing) {
-      updateProject.mutate({ id: project.id, ...input }, { onSuccess: () => onOpenChange(false) })
+    if (project) {
+      updateProject.mutate({ id: project.id, ...input }, { onSuccess })
     } else {
-      createProject.mutate(input, { onSuccess: () => onOpenChange(false) })
+      createProject.mutate({ ...input, workspace_id: currentWorkspace.id }, { onSuccess })
     }
   }
 
@@ -43,16 +47,14 @@ export function ProjectFormDialog({ open, onOpenChange, project }: ProjectFormDi
         <DialogHeader>
           <DialogTitle>{isEditing ? 'Editar proyecto' : 'Nuevo proyecto'}</DialogTitle>
           <DialogDescription>
-            {isEditing
-              ? 'Modifica los campos y guarda los cambios.'
-              : 'Agrupa tus tareas en un proyecto.'}
+            {isEditing ? 'Modifica los campos y guarda los cambios.' : 'Agrupa tus tareas en un proyecto.'}
           </DialogDescription>
         </DialogHeader>
 
         {open && (
           <ProjectForm
             defaultValues={
-              isEditing ? { name: project.name, description: project.description ?? '' } : undefined
+              project ? { name: project.name, description: project.description ?? '' } : undefined
             }
             onSubmit={handleSubmit}
             isPending={isPending}

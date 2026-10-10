@@ -24,6 +24,12 @@ export const STATUS_LABELS: Record<TaskStatus, string> = {
   done: 'Completada',
 }
 
+export const PRIORITY_BAR_COLORS: Record<TaskPriority, string> = {
+  high: 'bg-red-500',
+  medium: 'bg-amber-500',
+  low: 'bg-emerald-500',
+}
+
 /** Tarea con sus relaciones aplanadas (proyecto + etiquetas). */
 export interface TaskWithRelations extends Task {
   project: { id: string; name: string } | null

@@ -1,5 +1,4 @@
 import { supabase } from '@/lib/supabase/client'
-import { setTaskTags } from '@/features/tags/api'
 import type { Tag } from '@/features/tags/types'
 import { isoDateInDays, todayISODate } from '@/utils/dates'
 
@@ -11,14 +10,12 @@ export const taskKeys = {
   detail: (id: string) => [...taskKeys.all, 'detail', id] as const,
 }
 
-const TASK_SELECT = '*, project:projects(id,name), task_tags(tag:tags(id,name))'
-// Cuando se filtra por etiqueta hace falta un join !inner adicional (alias)
-// sin perder el join completo de etiquetas para mostrar.
+const TASK_SELECT = '*, project:projects(id,name,workspace_id), task_tags(tag:tags(id,name))'
 const TASK_SELECT_WITH_TAG_FILTER =
-  '*, project:projects(id,name), task_tags(tag:tags(id,name)), tag_filter:task_tags!inner(tag_id)'
+  '*, project:projects(id,name,workspace_id), task_tags(tag:tags(id,name)), tag_filter:task_tags!inner(tag_id)'
 
 type TaskRow = Task & {
-  project: { id: string; name: string } | null
+  project: { id: string; name: string; workspace_id: string } | null
   task_tags: { tag: Tag | null }[] | null
   tag_filter?: { tag_id: string }[] | null
 }
@@ -32,11 +29,6 @@ function flatten(row: TaskRow): TaskWithRelations {
   }
 }
 
-/**
- * Acceso a datos de tasks. Único punto del feature que toca Supabase.
- * RLS en PostgreSQL limita cada fila a su propietario.
- * Los filtros se aplican en servidor (ver TaskFilters).
- */
 export async function listTasks(filters: TaskFilters = {}): Promise<TaskWithRelations[]> {
   let query = supabase
     .from('tasks')
@@ -44,7 +36,6 @@ export async function listTasks(filters: TaskFilters = {}): Promise<TaskWithRela
     .order('created_at', { ascending: false })
 
   if (filters.text) {
-    // Sanitizar caracteres con significado en la sintaxis or() de PostgREST
     const escaped = filters.text.replace(/[%(),.\\]/g, ' ').trim()
     if (escaped) {
       query = query.or(`title.ilike.%${escaped}%,description.ilike.%${escaped}%`)
@@ -62,7 +53,6 @@ export async function listTasks(filters: TaskFilters = {}): Promise<TaskWithRela
     query = query.eq('status', filters.status)
   }
   if (filters.due === 'overdue') {
-    // due_date < hoy (los NULL quedan excluidos por la comparación)
     query = query.lt('due_date', todayISODate())
   } else if (filters.due === 'today') {
     query = query.eq('due_date', todayISODate())
@@ -92,6 +82,7 @@ export async function createTask(input: TaskInsert, tagIds: string[] = []): Prom
   if (error) throw error
 
   if (tagIds.length > 0) {
+    const { setTaskTags } = await import('@/features/tags/api')
     await setTaskTags(data.id, tagIds)
   }
   return data
@@ -112,6 +103,7 @@ export async function updateTask(
   if (error) throw error
 
   if (tagIds) {
+    const { setTaskTags } = await import('@/features/tags/api')
     await setTaskTags(id, tagIds)
   }
   return data

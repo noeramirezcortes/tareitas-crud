@@ -14,12 +14,13 @@ import { TaskList } from '@/features/tasks/components/TaskList'
 import { TasksFilters } from '@/features/tasks/components/TasksFilters'
 import { useDeleteTask, useToggleTask } from '@/features/tasks/hooks/useTaskMutations'
 import { useTasks } from '@/features/tasks/hooks/useTasks'
+import { useWorkspace } from '@/features/workspaces/WorkspaceContext'
 import type { TaskFilters, TaskWithRelations } from '@/features/tasks/types'
 
 export function TasksPage() {
+  const { currentWorkspace } = useWorkspace()
   const [searchParams] = useSearchParams()
 
-  // La URL es la fuente de verdad de los filtros (URLs compartibles)
   const filters: TaskFilters = {
     text: searchParams.get('q') || undefined,
     projectId: searchParams.get('project') || undefined,
@@ -127,7 +128,7 @@ export function TasksPage() {
         onOpenChange={(open) => !open && setViewingId(null)}
       />
 
-      <ManageTagsDialog open={tagsOpen} onOpenChange={setTagsOpen} />
+      <ManageTagsDialog open={tagsOpen} onOpenChange={setTagsOpen} workspaceId={currentWorkspace?.id ?? ''} />
 
       <ConfirmDialog
         open={deleting !== null}

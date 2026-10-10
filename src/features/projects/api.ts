@@ -4,16 +4,14 @@ import type { Project, ProjectInsert, ProjectUpdate, ProjectWithTaskCount } from
 
 export const projectKeys = {
   all: ['projects'] as const,
+  byWorkspace: (wsId: string) => ['projects', 'workspace', wsId] as const,
 }
 
-/**
- * Acceso a datos de projects. Único punto del feature que toca Supabase.
- * RLS en PostgreSQL limita cada fila a su propietario.
- */
-export async function listProjects(): Promise<ProjectWithTaskCount[]> {
+export async function listProjects(workspaceId: string): Promise<ProjectWithTaskCount[]> {
   const { data, error } = await supabase
     .from('projects')
     .select('*, tasks(count)')
+    .eq('workspace_id', workspaceId)
     .order('created_at', { ascending: false })
 
   if (error) throw error

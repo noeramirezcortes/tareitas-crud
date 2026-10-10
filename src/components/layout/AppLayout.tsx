@@ -13,6 +13,7 @@ import {
 import { useLogout } from '@/features/auth/hooks/useLogout'
 import { useSession } from '@/features/auth/hooks/useSession'
 import { cn } from '@/lib/utils'
+import { OrgWorkspaceSelector } from '@/features/workspaces/OrgWorkspaceSelector'
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   cn(
@@ -23,7 +24,7 @@ const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   )
 
 /**
- * Layout de la zona autenticada: header con navegación y menú de usuario.
+ * Layout de la zona autenticada: header con navegación, selector org/workspace y menú de usuario.
  */
 export function AppLayout() {
   const { user } = useSession()
@@ -56,7 +57,9 @@ export function AppLayout() {
             </NavLink>
           </nav>
 
-          <div className="ml-auto">
+          <div className="ml-auto flex items-center gap-4">
+            <OrgWorkspaceSelector />
+            <div className="w-px h-6 bg-border" />
             <DropdownMenu>
               <DropdownMenuTrigger className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring">
                 <Avatar>

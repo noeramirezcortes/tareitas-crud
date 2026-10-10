@@ -5,6 +5,7 @@ import { BrowserRouter } from 'react-router-dom'
 
 import { Toaster } from '@/components/ui/sonner'
 import { AuthProvider } from '@/features/auth/AuthProvider'
+import { WorkspaceProvider } from '@/features/workspaces/WorkspaceContext'
 import { queryClient } from '@/lib/query/client'
 
 import App from './App.tsx'
@@ -15,8 +16,10 @@ createRoot(document.getElementById('root')!).render(
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <AuthProvider>
-          <App />
-          <Toaster />
+          <WorkspaceProvider>
+            <App />
+            <Toaster />
+          </WorkspaceProvider>
         </AuthProvider>
       </BrowserRouter>
     </QueryClientProvider>
