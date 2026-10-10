@@ -82,6 +82,22 @@ async function expectError(label, fn) {
   }
 }
 
+// Como expectError, pero además exige que el bloqueo se deba a la razón
+// esperada (mensaje de RLS o excepción de la función), no a un error ajeno.
+async function expectBlock(label, fn, reason) {
+  try {
+    await guarded(fn)
+    fail(label, 'debió fallar y no falló')
+  } catch (e) {
+    const firstLine = e.message.split('\n')[0]
+    if (reason && !e.message.includes(reason)) {
+      fail(label, `falló por otra razón: ${firstLine}`)
+    } else {
+      ok(`${label} → bloqueado: ${firstLine}`)
+    }
+  }
+}
+
 // Usuario autenticado dentro de una transacción que SIEMPRE se revierte.
 // Sirve para comprobar permisos sin dejar datos de prueba.
 async function asUserTx(uid, fn) {
@@ -316,6 +332,46 @@ await asUserTx(uC, async () => {
   await expectRows('member no puede cancelar invitaciones (0 filas)', () =>
     rowsOf(`delete from public.invitations where organization_id = $1 returning id`, [orgA]), 0)
 })
+
+// ------------------------------------------------------------
+console.log('\n== 9. La organización siempre conserva un owner ==')
+// orgA: A es el único owner (B admin, C member).
+await asUserTx(uA, async () => {
+  await expectBlock('degradar al único owner falla (trigger)', () =>
+    db.query(`update public.memberships set role = 'admin' where user_id = $1 and organization_id = $2`, [uA, orgA]),
+    'al menos un owner')
+})
+// El DELETE del caso anterior lo prueba el superusuario: con RLS el owner no
+// llegaría al trigger (la policy devuelve 0 filas hasta la migración 01).
+await expectBlock('borrar la membresía del único owner falla (trigger)', () =>
+  db.query(`delete from public.memberships where user_id = $1 and organization_id = $2`, [uA, orgA]),
+  'al menos un owner')
+
+// Con dos owners, degradar o salir sí funciona.
+await asUserSession(uA, async () => {
+  await expectRows('A promueve a C a owner', () =>
+    rowsOf(`update public.memberships set role = 'owner' where user_id = $1 and organization_id = $2 returning user_id`, [uC, orgA]), 1)
+})
+await asUserSession(uA, async () => {
+  await expectRows('con dos owners, A puede degradarse', () =>
+    rowsOf(`update public.memberships set role = 'admin' where user_id = $1 and organization_id = $2 returning user_id`, [uA, orgA]), 1)
+  await expectRows('con dos owners, A puede salir (borra su membresía)', () =>
+    rowsOf(`delete from public.memberships where user_id = $1 and organization_id = $2 returning user_id`, [uA, orgA]), 1)
+})
+// Restaurar el estado: C reincorpora a A como owner y vuelve a member.
+await asUserSession(uC, async () => {
+  await expectRows('C reincorpora a A como owner', () =>
+    rowsOf(`insert into public.memberships (user_id, organization_id, role) values ($1, $2, 'owner') returning user_id`, [uA, orgA]), 1)
+  await expectRows('C vuelve a member', () =>
+    rowsOf(`update public.memberships set role = 'member' where user_id = $1 and organization_id = $2 returning user_id`, [uC, orgA]), 1)
+})
+await expectRows('estado restaurado: A vuelve a ser el único owner de orgA', () =>
+  scalar(`select count(*) n from public.memberships where organization_id = '${orgA}' and role = 'owner'`), 1)
+
+// El bloqueo también cubre el borrado en cascada desde auth.users: para
+// eliminar la cuenta del último owner primero hay que transferir el ownership.
+await expectError('borrar la cuenta del único owner también se bloquea', () =>
+  db.query('delete from auth.users where id = $1', [uD]))
 
 // ------------------------------------------------------------
 console.log(`\n${passes} comprobaciones correctas, ${failures} fallidas`)
