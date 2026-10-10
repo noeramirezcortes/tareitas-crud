@@ -374,5 +374,38 @@ await expectError('borrar la cuenta del único owner también se bloquea', () =>
   db.query('delete from auth.users where id = $1', [uD]))
 
 // ------------------------------------------------------------
+console.log('\n== 10. Salir de la organización ==')
+await asUserTx(uA, async () => {
+  await expectBlock('el único owner no puede salir (lo bloquea el trigger)', () =>
+    db.query(`delete from public.memberships where user_id = $1 and organization_id = $2`, [uA, orgA]),
+    'al menos un owner')
+})
+await asUserTx(uC, async () => {
+  await expectRows('un member no puede borrar la membresía de otro (0 filas)', () =>
+    rowsOf(`delete from public.memberships where user_id = $1 and organization_id = $2 returning user_id`, [uB, orgA]), 0)
+})
+await asUserSession(uC, async () => {
+  await expectRows('un member puede salir de la organización', () =>
+    rowsOf(`delete from public.memberships where user_id = $1 and organization_id = $2 returning user_id`, [uC, orgA]), 1)
+})
+await asUserTx(uC, async () => {
+  await expectRows('tras salir, C ya no ve los proyectos de orgA', () =>
+    scalar('select count(*) n from public.projects'), 0)
+  await expectRows('tras salir, C ya no ve la organización', () =>
+    scalar(`select count(*) n from public.organizations where id = '${orgA}'`), 0)
+})
+// C vuelve a entrar en orgA (como member) para las secciones siguientes.
+await db.query("insert into public.memberships (user_id, organization_id, role) values ($1, $2, 'member')", [uC, orgA])
+
+console.log('\n== 10b. Solo un owner crea membresías owner ==')
+await asUserTx(uB, async () => {
+  await expectBlock('admin no puede crear membresías con rol owner', () =>
+    db.query(`insert into public.memberships (user_id, organization_id, role) values ($1, $2, 'owner')`, [uD, orgA]),
+    'row-level security')
+  await expectRows('admin sí puede añadir members', () =>
+    rowsOf(`insert into public.memberships (user_id, organization_id, role) values ($1, $2, 'member') returning user_id`, [uD, orgA]), 1)
+})
+
+// ------------------------------------------------------------
 console.log(`\n${passes} comprobaciones correctas, ${failures} fallidas`)
 process.exit(failures === 0 ? 0 : 1)

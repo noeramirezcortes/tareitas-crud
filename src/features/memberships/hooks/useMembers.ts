@@ -3,7 +3,7 @@ import { toast } from 'sonner'
 
 import type { OrgRole } from '@/features/organizations/types'
 
-import { listMembers, memberKeys, removeMember, updateMemberRole } from '../api'
+import { leaveOrganization, listMembers, memberKeys, removeMember, updateMemberRole } from '../api'
 
 export function useMembers(organizationId: string | null) {
   return useQuery({
@@ -40,6 +40,22 @@ export function useRemoveMember(organizationId: string) {
     },
     onError: (error) => {
       toast.error(error.message || 'No se pudo expulsar al miembro')
+    },
+  })
+}
+
+/**
+ * Salir de la organización. No invalida queries: quien llama navega fuera
+ * y refresca el contexto de workspaces tras el éxito.
+ */
+export function useLeaveOrganization(organizationId: string) {
+  return useMutation({
+    mutationFn: (userId: string) => leaveOrganization(organizationId, userId),
+    onSuccess: () => {
+      toast.success('Has salido de la organización')
+    },
+    onError: (error) => {
+      toast.error(error.message || 'No se pudo salir de la organización')
     },
   })
 }

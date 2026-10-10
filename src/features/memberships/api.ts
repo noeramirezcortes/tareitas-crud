@@ -46,3 +46,19 @@ export async function removeMember(organizationId: string, userId: string): Prom
   if (error) throw error
   if (data.length === 0) throw new Error('No tienes permiso para expulsar a este miembro')
 }
+
+/**
+ * Salir de la organización (borrar la propia membresía).
+ * El trigger de la BD impide salir al último owner.
+ */
+export async function leaveOrganization(organizationId: string, userId: string): Promise<void> {
+  const { data, error } = await supabase
+    .from('memberships')
+    .delete()
+    .eq('organization_id', organizationId)
+    .eq('user_id', userId)
+    .select('user_id')
+
+  if (error) throw error
+  if (data.length === 0) throw new Error('No se pudo salir de la organización')
+}

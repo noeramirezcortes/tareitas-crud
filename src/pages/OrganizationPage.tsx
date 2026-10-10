@@ -1,6 +1,6 @@
 import { Plus } from 'lucide-react'
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 
 import { EmptyState } from '@/components/common/EmptyState'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
@@ -23,9 +23,16 @@ const ROLE_LABELS: Record<OrgRole, string> = {
 
 export function OrganizationPage() {
   const { user } = useSession()
-  const { currentOrganization, orgWorkspaces, currentWorkspace, selectWorkspace, isLoading } = useWorkspace()
+  const navigate = useNavigate()
+  const { currentOrganization, orgWorkspaces, currentWorkspace, selectWorkspace, refresh, isLoading } = useWorkspace()
   const members = useMembers(currentOrganization?.id ?? null)
   const [workspaceDialogOpen, setWorkspaceDialogOpen] = useState(false)
+
+  // Tras salir de la organización, el contexto cae a la primera disponible.
+  const handleLeftOrganization = async () => {
+    await refresh()
+    navigate('/dashboard')
+  }
 
   if (isLoading) return <LoadingSpinner />
   if (!currentOrganization || !user) {
@@ -87,7 +94,12 @@ export function OrganizationPage() {
 
       <section className="space-y-3">
         <h2 className="text-lg font-semibold">Miembros</h2>
-        <MembersPanel organizationId={currentOrganization.id} myUserId={user.id} myRole={myRole} />
+        <MembersPanel
+          organizationId={currentOrganization.id}
+          myUserId={user.id}
+          myRole={myRole}
+          onLeft={handleLeftOrganization}
+        />
       </section>
 
       {isAdmin && (
