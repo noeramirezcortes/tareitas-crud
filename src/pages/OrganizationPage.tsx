@@ -105,7 +105,7 @@ export function OrganizationPage() {
       {isAdmin && (
         <section className="space-y-3">
           <h2 className="text-lg font-semibold">Invitaciones</h2>
-          <InvitationsPanel organizationId={currentOrganization.id} myUserId={user.id} isOwner={isOwner} />
+          <InvitationsPanel organizationId={currentOrganization.id} isOwner={isOwner} />
         </section>
       )}
 

@@ -294,6 +294,10 @@ export interface Database {
         Args: { p_name: string }
         Returns: string
       }
+      create_invitation: {
+        Args: { p_org: string; p_email: string; p_role: 'owner' | 'admin' | 'member' }
+        Returns: string
+      }
       accept_invitation: {
         Args: { p_token: string }
         Returns: string

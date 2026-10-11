@@ -407,5 +407,77 @@ await asUserTx(uB, async () => {
 })
 
 // ------------------------------------------------------------
+console.log('\n== 11. create_invitation: reinvitar, duplicados y miembros ==')
+// E entra en orgA como member para las comprobaciones de esta sección.
+const uE = (await one("insert into auth.users (email) values ('e@test') returning id")).id
+await db.query("insert into public.memberships (user_id, organization_id, role) values ($1, $2, 'member')", [uE, orgA])
+
+await asUserSession(uE, async () => {
+  await expectBlock('un member no puede crear invitaciones (RPC)', () =>
+    db.query(`select public.create_invitation($1, 'nuevo@test', 'member')`, [orgA]),
+    'Solo owners y admins')
+})
+await asUserSession(uB, async () => {
+  await expectBlock('un admin no puede invitar como owner (RPC)', () =>
+    db.query(`select public.create_invitation($1, 'nuevo@test', 'owner')`, [orgA]),
+    'Solo un owner')
+})
+
+let invId
+await asUserSession(uA, async () => {
+  invId = (await one(`select public.create_invitation($1, 'nuevo@test', 'member') as id`, [orgA])).id
+  ok('el owner crea la invitación vía RPC')
+})
+await expectRows('invited_by lo fija la RPC (auth.uid), no el cliente', () =>
+  scalar(`select count(*) n from public.invitations where id = '${invId}' and invited_by = '${uA}'`), 1)
+
+await asUserSession(uA, async () => {
+  await expectBlock('duplicado vigente rechazado (índice único)', () =>
+    db.query(`select public.create_invitation($1, 'nuevo@test', 'member')`, [orgA]),
+    'invitations_email_org_pending_idx')
+})
+
+// Si la invitación expira, reinvitar al mismo email vuelve a funcionar.
+await db.query(`update public.invitations set expires_at = now() - interval '1 day' where id = $1`, [invId])
+await asUserSession(uA, async () => {
+  await expectRows('reinvitar tras expiración funciona', () =>
+    rowsOf(`select public.create_invitation($1, 'nuevo@test', 'member')`, [orgA]), 1)
+})
+await expectRows('solo queda una invitación pendiente para ese email', () =>
+  scalar(`select count(*) n from public.invitations where email = 'nuevo@test' and organization_id = '${orgA}' and accepted_at is null`), 1)
+
+await asUserSession(uA, async () => {
+  await expectBlock('no se puede invitar a quien ya es miembro', () =>
+    db.query(`select public.create_invitation($1, 'b@test', 'member')`, [orgA]),
+    'ya es miembro')
+  await expectBlock('la normalización de email detecta miembros (mayúsculas/espacios)', () =>
+    db.query(`select public.create_invitation($1, ' B@Test ', 'member')`, [orgA]),
+    'ya es miembro')
+})
+
+console.log('\n== 11b. Aceptar siendo ya miembro: subir rol, nunca degradar ==')
+// Estas invitaciones se crean con superusuario: la RPC las rechazaría
+// porque E ya es miembro (cubren el caso "invitado antes de unirse").
+const tokAdmin = (await one(
+  `insert into public.invitations (email, organization_id, invited_by, role) values ('e@test', $1, $2, 'admin') returning token`,
+  [orgA, uA])).token
+await asUserSession(uE, async () => {
+  await db.query('select public.accept_invitation($1)', [tokAdmin])
+  ok('E acepta una invitación admin siendo member')
+})
+await expectRows('el rol de E sube a admin', () =>
+  scalar(`select count(*) n from public.memberships where user_id = '${uE}' and organization_id = '${orgA}' and role = 'admin'`), 1)
+
+const tokMember = (await one(
+  `insert into public.invitations (email, organization_id, invited_by, role) values ('e@test', $1, $2, 'member') returning token`,
+  [orgA, uA])).token
+await asUserSession(uE, async () => {
+  await db.query('select public.accept_invitation($1)', [tokMember])
+  ok('E acepta una invitación member siendo admin')
+})
+await expectRows('E conserva el rol admin (no se degrada por invitación)', () =>
+  scalar(`select count(*) n from public.memberships where user_id = '${uE}' and organization_id = '${orgA}' and role = 'admin'`), 1)
+
+// ------------------------------------------------------------
 console.log(`\n${passes} comprobaciones correctas, ${failures} fallidas`)
 process.exit(failures === 0 ? 0 : 1)

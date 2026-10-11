@@ -24,20 +24,20 @@ export interface CreateInvitationInput {
   email: string
   organizationId: string
   role: OrgRole
-  invitedBy: string
 }
 
-export async function createInvitation(input: CreateInvitationInput): Promise<Invitation> {
-  const { data, error } = await supabase
-    .from('invitations')
-    .insert({
-      email: input.email.trim().toLowerCase(),
-      organization_id: input.organizationId,
-      role: input.role,
-      invited_by: input.invitedBy,
-    })
-    .select()
-    .single()
+/**
+ * Crea la invitación vía RPC. La función SQL limpia invitaciones expiradas
+ * del mismo email, rechaza duplicados vigentes y miembros existentes, y
+ * fija invited_by = auth.uid() (no se puede suplantar desde el cliente).
+ * Devuelve el id de la invitación creada.
+ */
+export async function createInvitation(input: CreateInvitationInput): Promise<string> {
+  const { data, error } = await supabase.rpc('create_invitation', {
+    p_org: input.organizationId,
+    p_email: input.email,
+    p_role: input.role,
+  })
 
   if (error) throw error
   return data

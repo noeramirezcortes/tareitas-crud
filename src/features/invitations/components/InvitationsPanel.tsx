@@ -24,7 +24,6 @@ import type { Invitation } from '../types'
 
 interface InvitationsPanelProps {
   organizationId: string
-  myUserId: string
   isOwner: boolean
 }
 
@@ -46,7 +45,7 @@ const STATUS_LABELS: Record<InvitationStatus, string> = {
  * Invitaciones por email. Sin proveedor de correo, el admin copia el enlace
  * y lo comparte; el enlace sólo funciona para el email invitado.
  */
-export function InvitationsPanel({ organizationId, myUserId, isOwner }: InvitationsPanelProps) {
+export function InvitationsPanel({ organizationId, isOwner }: InvitationsPanelProps) {
   const { data: invitations, isLoading, isError, refetch } = useInvitations(organizationId)
   const createInvitation = useCreateInvitation(organizationId)
   const cancelInvitation = useCancelInvitation(organizationId)
@@ -61,10 +60,7 @@ export function InvitationsPanel({ organizationId, myUserId, isOwner }: Invitati
       toast.error('Introduce un email válido')
       return
     }
-    createInvitation.mutate(
-      { email: trimmed, role, invitedBy: myUserId },
-      { onSuccess: () => setEmail('') },
-    )
+    createInvitation.mutate({ email: trimmed, role }, { onSuccess: () => setEmail('') })
   }
 
   const copyLink = async (token: string) => {
