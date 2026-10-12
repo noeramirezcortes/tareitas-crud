@@ -60,6 +60,7 @@ pnpm dev
 | `/projects` | Protegida | CRUD de proyectos              |
 | `/organization` | Protegida | Workspaces, miembros, roles e invitaciones (owner/admin) |
 | `/invite/:token` | Protegida | Aceptar una invitación (el email de la cuenta debe ser el invitado) |
+| `/billing`  | Protegida | Plan, consumo y límites; actualizar a Pro y administrar la suscripción (owner) |
 
 Las rutas protegidas redirigen a `/login` si no hay sesión (guard UX; la
 seguridad real es RLS). Las de visitante redirigen a `/dashboard` si ya hay sesión.
@@ -92,6 +93,11 @@ pnpm db:types   # regenera src/lib/supabase/database.types.ts
 > `src/lib/supabase/database.types.ts` está escrito a mano (Fase 1, solo tabla
 > `tasks`). Al vincular la CLI, `pnpm db:types` lo sobrescribe con los tipos
 > generados desde la DB real.
+
+## Billing y despliegue
+
+- Planes, límites y Stripe (modo test, variables, despliegue): `doc/guia-stripe.md`.
+- Publicación en Cloudflare Pages con el dominio `tareitas.online`: `doc/guia-despliegue.md`.
 
 ## Estructura
 

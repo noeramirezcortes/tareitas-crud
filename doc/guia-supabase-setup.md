@@ -98,7 +98,7 @@ pide a Supabase que el correo de confirmación lo lleve de vuelta a ese enlace
 1. Supabase Dashboard → **Authentication → URL Configuration**.
 2. En **Redirect URLs** añade, para cada entorno:
    - `http://localhost:5173/**` (desarrollo)
-   - `https://TU-DOMINIO/**` (producción)
+   - `https://tareitas.online/**` (producción; ver `doc/guia-despliegue.md`)
 3. Guarda.
 
 > Si la URL no está en la lista, Supabase no falla: usa el **Site URL** y el
