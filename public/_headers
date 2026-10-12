@@ -1,4 +1,4 @@
-# Cabeceras de Cloudflare Pages (se copian a dist/ en el build).
+# Cabeceras de Cloudflare (se copian a dist/ en el build).
 /*
   X-Content-Type-Options: nosniff
   X-Frame-Options: DENY

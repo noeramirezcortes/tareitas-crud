@@ -198,7 +198,7 @@ despliegas desde otro sitio, añade `--no-verify-jwt` a **esa** función.
 - Copia el *Signing secret* (`whsec_…`) y guárdalo:
   `supabase secrets set STRIPE_WEBHOOK_SECRET=whsec_…`
 
-**d) Publicar la app** en Cloudflare Pages (`doc/guia-despliegue.md`, con la ruta `/billing`) y repetir el recorrido manual.
+**d) Publicar la app** en Cloudflare (`doc/guia-despliegue.md`, con la ruta `/billing`) y repetir el recorrido manual.
 En *Developers → Webhooks → tu endpoint* puedes ver cada entrega y reenviarla.
 
 > El `SITE_URL` de producción debe ser el dominio donde sirves la app: a él

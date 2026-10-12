@@ -1,11 +1,11 @@
-# Guía de despliegue — Cloudflare Pages + tareitas.online
+# Guía de despliegue — Cloudflare + tareitas.online
 
-Publica la app (frontend estático) en **Cloudflare Pages** con el dominio
+Publica la app (frontend estático) en **Cloudflare** (Workers Static Assets, el sucesor de Pages) con el dominio
 `tareitas.online`. El backend sigue siendo Supabase; los pagos, Stripe
 (`doc/guia-stripe.md`).
 
 ```
-Usuario ──▶ tareitas.online (Cloudflare Pages: HTML/JS estáticos)
+Usuario ──▶ tareitas.online (Cloudflare: HTML/JS estáticos)
                 │
                 ├──▶ Supabase (Auth, base de datos, Edge Functions)
                 └──▶ Stripe Checkout / Portal (redirecciones desde las funciones)
@@ -18,18 +18,19 @@ Usuario ──▶ tareitas.online (Cloudflare Pages: HTML/JS estáticos)
 ## 1. Crear el proyecto en Cloudflare Pages
 
 1. Entra a `dash.cloudflare.com` (cuenta gratuita) → **Workers & Pages** →
-   **Create** → **Pages** → **Connect to Git**.
+   **Create application** → **Connect to Git** (o *Import a repository*).
 2. Autoriza GitHub y elige el repositorio `tareitas-crud`, rama `main`.
 3. Configuración de build:
 
    | Campo | Valor |
    |---|---|
-   | Framework preset | `Vite` (o ninguno) |
+   | Project / Worker name | `tareitas-crud` (debe coincidir con `name` en `wrangler.jsonc`) |
    | Build command | `pnpm build` |
-   | Build output directory | `dist` |
+   | Deploy command | `npx wrangler deploy` (el valor por defecto) |
    | Root directory | *(vacío)* |
 
-4. **Environment variables** (agrégalas en *Production* y en *Preview*):
+4. **Variables** (*Settings → Variables and Secrets → Build*, para que existan
+   durante el build):
 
    | Variable | Valor |
    |---|---|
@@ -39,20 +40,24 @@ Usuario ──▶ tareitas.online (Cloudflare Pages: HTML/JS estáticos)
    | `PNPM_VERSION` | `12.10.1` (la misma que usa el CI) |
 
 5. **Save and Deploy**. En un par de minutos tendrás una URL
-   `https://tareitas-crud.pages.dev`.
+   `https://tareitas-crud.<tu-subdominio>.workers.dev`.
 
-**Qué esperar:** Pages detecta que no hay `404.html` y trata el proyecto como
-SPA: `/billing`, `/tasks` o `/invite/...` siguen funcionando al recargar. Si
-tu panel te lleva al flujo nuevo de *Workers Static Assets* en lugar de
-*Pages*, usa los mismos comandos y activa la opción
-`not_found_handling = "single-page-application"` (SPA) para el mismo efecto.
+**Cómo se sirve.** `wrangler.jsonc` (en la raíz del repo) apunta a `./dist` y
+activa `not_found_handling = "single-page-application"`: `/billing`, `/tasks`
+o `/invite/...` devuelven `index.html` al recargar. Las cabeceras de
+seguridad y la caché de `/assets` salen de `public/_headers`.
 
-Las cabeceras de seguridad y la caché de `/assets` salen de
-`public/_headers` (ya incluido).
+> **Por qué existe `wrangler.jsonc`.** Sin él, Cloudflare intenta
+> "autoconfigurar" el proyecto con `pnpm add -D wrangler`, y pnpm 12 aborta con
+> `ERR_PNPM_IGNORED_BUILDS` (bloquea los scripts de `esbuild` y `workerd`). Con
+> la configuración ya en el repo, no instala nada extra.
+>
+> **Variables `VITE_*`:** se incrustan en el *build*; si las cambias, hay que
+> reconstruir (*Deployments → Retry deployment* o un nuevo push).
 
 ## 2. Conectar el dominio `tareitas.online`
 
-Para un dominio raíz (sin `www`), Pages requiere que el DNS lo sirva
+Para un dominio raíz (sin `www`), Cloudflare requiere que el DNS lo sirva
 Cloudflare. Lo más simple es **mover los nameservers** (el dominio sigue
 siendo tuyo y registrado en Namecheap).
 
@@ -62,14 +67,14 @@ siendo tuyo y registrado en Namecheap).
    **Nameservers** → **Custom DNS** → pega los dos de Cloudflare → ✔.
 3. Espera a que Cloudflare marque el sitio como **Active** (minutos a unas
    horas; te avisa por correo).
-4. Pages → tu proyecto → **Custom domains** → **Set up a custom domain** →
+4. Tu proyecto → **Settings → Domains & Routes → Add → Custom domain** →
    `tareitas.online`. Cloudflare crea el registro y emite el certificado
    HTTPS solo.
 5. (Opcional) `www`: añade también `www.tareitas.online` como dominio
    personalizado y crea una **Redirect Rule** (*Rules → Redirect Rules*):
    `www.tareitas.online/*` → `https://tareitas.online/${1}`, 301.
 
-> Hasta que el DNS se propague puedes probar todo en `*.pages.dev`.
+> Hasta que el DNS se propague puedes probar todo en `*.workers.dev`.
 
 ## 3. Autorizar el dominio en Supabase Auth
 
@@ -79,7 +84,7 @@ Supabase Dashboard → **Authentication → URL Configuration**:
 |---|---|
 | Site URL | `https://tareitas.online` |
 | Redirect URLs | `https://tareitas.online/**` |
-|  | `https://*.pages.dev/**` *(opcional: previsualizaciones)* |
+|  | `https://*.workers.dev/**` *(pruebas con la URL temporal)* |
 |  | `http://localhost:5173/**` *(desarrollo)* |
 
 Sin esto, los enlaces de correo (confirmación de cuenta, invitaciones)
@@ -94,7 +99,7 @@ retorno las arma la Edge Function con `SITE_URL`. Solo falta:
 supabase secrets set SITE_URL=https://tareitas.online
 ```
 
-Mientras pruebas en `*.pages.dev`, pon temporalmente esa URL en `SITE_URL`
+Mientras pruebas en `*.workers.dev`, pon temporalmente esa URL en `SITE_URL`
 (Stripe volverá a ella tras pagar) y cámbiala al dominio definitivo después.
 
 ## 5. Verificar
@@ -122,5 +127,5 @@ curl -sI https://tareitas.online | head -12
   remitente genérico. Si activas confirmación de email en producción,
   configura un SMTP propio (Resend, Brevo…) con un remitente de
   `tareitas.online` (*Authentication → SMTP Settings*).
-- **Revertir:** en Pages → *Deployments* puedes volver a una versión anterior
+- **Revertir:** en tu proyecto → *Deployments* puedes volver a una versión anterior
   con un clic.

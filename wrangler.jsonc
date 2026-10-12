@@ -1,0 +1,11 @@
+{
+  // Despliegue en Cloudflare (Workers Static Assets): sirve ./dist como SPA.
+  // El "name" debe coincidir con el nombre del proyecto en el panel de Cloudflare.
+  "name": "tareitas-crud",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./dist",
+    // Rutas del cliente (/billing, /tasks, /invite/...) devuelven index.html.
+    "not_found_handling": "single-page-application"
+  }
+}

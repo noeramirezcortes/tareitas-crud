@@ -46,3 +46,7 @@ supabase/.env
 
 # Herramientas de IA locales
 .commandcode/
+
+# Cloudflare Wrangler
+.wrangler/
+.dev.vars

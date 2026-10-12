@@ -97,7 +97,7 @@ pnpm db:types   # regenera src/lib/supabase/database.types.ts
 ## Billing y despliegue
 
 - Planes, límites y Stripe (modo test, variables, despliegue): `doc/guia-stripe.md`.
-- Publicación en Cloudflare Pages con el dominio `tareitas.online`: `doc/guia-despliegue.md`.
+- Publicación en Cloudflare con el dominio `tareitas.online`: `doc/guia-despliegue.md`.
 
 ## Estructura
 
