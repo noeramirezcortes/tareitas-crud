@@ -7,9 +7,9 @@
 // Uso: pnpm test:billing-local
 //
 // No necesita claves reales de Stripe: los eventos del webhook se FIRMAN aquí
-// con el STRIPE_WEBHOOK_SECRET del .env local. Checkout y Portal llegan hasta
-// la llamada a Stripe; con una clave real devuelven la URL, con una de relleno
-// devuelven 500 (se informa cuál ocurrió).
+// con el STRIPE_WEBHOOK_SECRET del .env local. Con una clave de Stripe real de
+// test, Checkout devuelve la URL (y crea un Customer en tu cuenta de pruebas);
+// con una de relleno solo se comprueba que la petición llega hasta Stripe.
 import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -116,6 +116,8 @@ if (!PRICE) {
 
 const owner = await signUp('it-owner')
 const stranger = await signUp('it-stranger')
+// Organización sin Customer previo: Checkout debe crearlo (con clave real, en Stripe).
+const buyer = await signUp('it-buyer')
 const CUSTOMER = `cus_it_${Date.now().toString(36)}`
 const SUB = `sub_it_${Date.now().toString(36)}`
 await admin('billing_customers', {
@@ -192,13 +194,20 @@ console.log('== billing-checkout / billing-portal ==')
   r = await call('billing-checkout', owner.token, { organization_id: owner.org, plan_code: 'free' })
   check('plan no contratable → 400', r.status === 400, JSON.stringify(r))
 
-  r = await call('billing-checkout', owner.token, { organization_id: owner.org })
-  const reachedStripe = r.status === 200 ? r.body.url?.startsWith('https://checkout.stripe.com') : r.status === 500
-  check(
-    `owner → llega a Stripe (${r.status === 200 ? 'URL de Checkout recibida: clave real' : '500: clave de relleno, esperado'})`,
-    reachedStripe,
-    JSON.stringify(r),
-  )
+  // Con una clave real (sk_/rk_ de test) Stripe debe devolver la URL de Checkout:
+  // así se detectan permisos faltantes en la clave restringida. Con una clave
+  // de relleno solo se comprueba que la petición llega hasta Stripe (500).
+  const realKey = /^(sk|rk)_test_/.test(env.STRIPE_SECRET_KEY ?? '') && !/dummy|xxx/.test(env.STRIPE_SECRET_KEY)
+  r = await call('billing-checkout', buyer.token, { organization_id: buyer.org })
+  if (realKey) {
+    check(
+      'owner → Stripe devuelve la URL de Checkout (clave real: permisos correctos)',
+      r.status === 200 && r.body.url?.startsWith('https://checkout.stripe.com'),
+      `${JSON.stringify(r)} — revisa los permisos de la clave (Customers, Checkout Sessions, Customer portal: Write)`,
+    )
+  } else {
+    check('owner → llega a Stripe (500 con clave de relleno, esperado)', r.status === 500, JSON.stringify(r))
+  }
 
   r = await call('billing-portal', stranger.token, { organization_id: stranger.org })
   check('portal sin suscripción que administrar → 404', r.status === 404, JSON.stringify(r))

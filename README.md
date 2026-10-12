@@ -45,6 +45,8 @@ pnpm dev
 | `pnpm preview`   | Sirve el build de producción                             |
 | `pnpm test:rls`  | Pruebas de aislamiento multi-tenant y reglas de roles sobre las migraciones reales (PGlite, sin Supabase) |
 | `pnpm test:e2e`  | Pruebas de UI con Playwright contra el Supabase local (`supabase start`; ver `doc/informe-pruebas-ui.md`) |
+| `pnpm test:functions` | Edge Functions de billing: firma del webhook (SDK real de Stripe), checkout y portal |
+| `pnpm test:billing-local` | Las Edge Functions en el runtime Deno real + base local (ver `doc/guia-stripe.md`) |
 
 ## Rutas
 

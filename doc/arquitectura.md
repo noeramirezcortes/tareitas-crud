@@ -244,3 +244,28 @@ Cada feature expone solo su API pública; prohibido importar archivos internos d
 4. Corregir errores y revisar warnings relevantes
 5. Si hubo migraciones: verificar RLS y regenerar tipos (`pnpm db:types`)
 6. Actualizar este documento si cambió alguna decisión
+
+---
+
+## 7. Billing (Fase 4)
+
+Detalle operativo, variables y despliegue: `doc/guia-stripe.md`.
+
+- **Unidad de cobro: la organización.** Plan en `plans` (límites configurables,
+  `null` = ilimitado; flags de funciones en `features`), estado en
+  `subscriptions`, vínculo con Stripe en `billing_customers`, idempotencia en
+  `stripe_events`. Sin suscripción vigente = plan `free`.
+- **Stripe es la fuente de verdad.** El plan solo cambia por eventos
+  `customer.subscription.*` validados en la Edge Function `stripe-webhook`,
+  que los aplica con `billing_apply_subscription` (SQL, solo `service_role`:
+  idempotente, tolerante a desorden, 7 días de gracia en `past_due`).
+- **Los límites los aplica la base de datos** (triggers `BEFORE INSERT`,
+  error `PT402` → HTTP 402). La UI (`features/billing`) solo los anticipa
+  con `get_billing_status`.
+- **Servidor seguro = Edge Functions** (`supabase/functions`): `billing-checkout`
+  y `billing-portal` (sesión + rol owner; el precio sale de `plans`) y
+  `stripe-webhook` (sin JWT; autenticidad por firma). La lógica es pura
+  (`_shared/webhook.ts`, `_shared/actions.ts`) y se prueba en Node; el
+  cableado con Deno/Stripe/Supabase está aislado en `_shared/runtime.ts`.
+- **Frontend:** ninguna variable nueva. Nunca ve claves de Stripe ni decide
+  el plan.
