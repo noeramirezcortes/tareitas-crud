@@ -174,7 +174,7 @@ Cada feature expone solo su API pública; prohibido importar archivos internos d
 
 | Decisión | Elección |
 |----------|----------|
-| Supabase | Proyecto **cloud**; Supabase CLI solo para tipos y migraciones. Sin Docker local por ahora. |
+| Supabase | Proyecto **cloud**; Supabase CLI para tipos y migraciones. Desde el cierre de Fase 3 también hay stack local con Docker (`supabase start`, `supabase db reset`) para validar migraciones sobre Postgres real antes de aplicarlas en remoto. |
 | Gestor de paquetes | **pnpm** (vía corepack; fallback npm) |
 | Git | Repo local; remoto GitHub se vincula después |
 | Entregable de esta tarea | Este documento |

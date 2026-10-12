@@ -19,9 +19,9 @@
 | 3.2 code splitting | ✅ `React.lazy` en las páginas de la app |
 | 3.3 / 3.4 imports y lint | ✅ (quedan 2 warnings de shadcn, aceptados) |
 | 3.5 CI | ✅ `.github/workflows/ci.yml` (falta verlo en verde en GitHub) |
-| 3.1 tipos generados | ⏳ requiere Supabase CLI vinculada (`pnpm db:types`) |
+| 3.1 tipos generados | ✅ contrastados con `supabase gen types --local` el 2026-10-11: funciones y columnas idénticas; el archivo a mano es más estricto en `tasks.status/priority` y se conserva |
 | 3.6 pruebas de UI | ⏳ deuda |
-| 3.7 probar migraciones en Supabase real | ⏳ requiere CLI/proyecto de prueba |
+| 3.7 probar migraciones en Supabase real | 🟡 Local hecho (2026-10-11): las 10 migraciones aplican limpias con `supabase start`, `supabase db lint` sin errores y 11/11 comprobaciones de humo con roles y `auth` reales. Falta probarlas en un proyecto remoto de pruebas |
 
 **Decisiones abiertas detectadas al cerrar (no estaban en este documento):**
 
