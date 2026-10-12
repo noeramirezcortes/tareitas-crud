@@ -5,7 +5,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { useWorkspace } from '@/features/workspaces/WorkspaceContext'
+import { useWorkspace } from '@/features/workspaces/useWorkspace'
 
 import { useCreateProject, useUpdateProject } from '../hooks/useProjectMutations'
 import type { ProjectFormValues } from '../schemas'

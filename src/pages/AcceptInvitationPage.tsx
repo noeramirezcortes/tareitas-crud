@@ -4,7 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { useAcceptInvitation } from '@/features/invitations/hooks/useInvitationMutations'
-import { useWorkspace } from '@/features/workspaces/WorkspaceContext'
+import { useWorkspace } from '@/features/workspaces/useWorkspace'
 
 export function AcceptInvitationPage() {
   const { token = '' } = useParams()

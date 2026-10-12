@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/select'
 import { useProjects } from '@/features/projects/hooks/useProjects'
 import { useTags } from '@/features/tags/hooks/useTags'
-import { useWorkspace } from '@/features/workspaces/WorkspaceContext'
+import { useWorkspace } from '@/features/workspaces/useWorkspace'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 
 import type { TaskPriority, TaskStatus } from '../types'

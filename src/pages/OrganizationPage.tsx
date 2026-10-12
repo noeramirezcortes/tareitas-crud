@@ -18,7 +18,7 @@ import type { OrgRole } from '@/features/organizations/types'
 import { WorkspaceFormDialog } from '@/features/workspaces/components/WorkspaceFormDialog'
 import { useDeleteWorkspace } from '@/features/workspaces/hooks/useWorkspaceMutations'
 import { countWorkspaceContents } from '@/features/workspaces/api'
-import { useWorkspace } from '@/features/workspaces/WorkspaceContext'
+import { useWorkspace } from '@/features/workspaces/useWorkspace'
 
 const ROLE_LABELS: Record<OrgRole, string> = {
   owner: 'Owner',

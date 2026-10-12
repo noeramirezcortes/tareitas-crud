@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useSession } from '@/features/auth/hooks/useSession'
 import { useProjects } from '@/features/projects/hooks/useProjects'
 import { useTasks } from '@/features/tasks/hooks/useTasks'
-import { useWorkspace } from '@/features/workspaces/WorkspaceContext'
+import { useWorkspace } from '@/features/workspaces/useWorkspace'
 import { PRIORITY_LABELS, PRIORITY_BAR_COLORS } from '@/features/tasks/types'
 import { isDueSoon, isOverdue } from '@/utils/dates'
 

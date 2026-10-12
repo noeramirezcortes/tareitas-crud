@@ -1,12 +1,13 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
-import { createContext, useCallback, useContext, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 
 import { useSession } from '@/features/auth/hooks/useSession'
 import { listOrganizations, organizationKeys } from '@/features/organizations/api'
-import type { Organization } from '@/features/organizations/types'
 
 import { listWorkspaces, workspaceKeys } from './api'
+import { WorkspaceContext } from './context'
+import type { WorkspaceContextValue } from './context'
 import type { Workspace } from './types'
 
 const STORAGE_KEY = 'tareitas_scope'
@@ -34,21 +35,6 @@ function writeScope(scope: Scope) {
   }
 }
 
-interface WorkspaceContextValue {
-  organizations: Organization[]
-  workspaces: Workspace[]
-  currentOrganization: Organization | null
-  currentWorkspace: Workspace | null
-  /** Workspaces de la organización actual. */
-  orgWorkspaces: Workspace[]
-  isLoading: boolean
-  selectOrganization: (organizationId: string) => void
-  selectWorkspace: (workspace: Pick<Workspace, 'id' | 'organization_id'>) => void
-  /** Vuelve a leer organizaciones y workspaces desde el servidor. */
-  refresh: () => Promise<void>
-}
-
-const WorkspaceContext = createContext<WorkspaceContextValue | null>(null)
 
 /**
  * Ámbito activo del usuario: organización y workspace.
@@ -135,12 +121,4 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   )
 
   return <WorkspaceContext.Provider value={value}>{children}</WorkspaceContext.Provider>
-}
-
-export function useWorkspace() {
-  const context = useContext(WorkspaceContext)
-  if (!context) {
-    throw new Error('useWorkspace debe usarse dentro de <WorkspaceProvider>')
-  }
-  return context
 }

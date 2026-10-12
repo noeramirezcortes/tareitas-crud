@@ -7,7 +7,7 @@ import {
 } from '@/components/ui/dialog'
 import { useProjects } from '@/features/projects/hooks/useProjects'
 import { useTags } from '@/features/tags/hooks/useTags'
-import { useWorkspace } from '@/features/workspaces/WorkspaceContext'
+import { useWorkspace } from '@/features/workspaces/useWorkspace'
 
 import { useCreateTask, useUpdateTask } from '../hooks/useTaskMutations'
 import type { TaskFormValues } from '../schemas'

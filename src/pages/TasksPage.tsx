@@ -14,7 +14,7 @@ import { TaskList } from '@/features/tasks/components/TaskList'
 import { TasksFilters } from '@/features/tasks/components/TasksFilters'
 import { useDeleteTask, useToggleTask } from '@/features/tasks/hooks/useTaskMutations'
 import { useTasks } from '@/features/tasks/hooks/useTasks'
-import { useWorkspace } from '@/features/workspaces/WorkspaceContext'
+import { useWorkspace } from '@/features/workspaces/useWorkspace'
 import type { TaskFilters, TaskWithRelations } from '@/features/tasks/types'
 
 export function TasksPage() {

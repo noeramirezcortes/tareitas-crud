@@ -13,7 +13,7 @@ import {
 import { OrganizationFormDialog } from '@/features/organizations/components/OrganizationFormDialog'
 
 import { WorkspaceFormDialog } from './components/WorkspaceFormDialog'
-import { useWorkspace } from './WorkspaceContext'
+import { useWorkspace } from './useWorkspace'
 
 /** Selector de organización y workspace activos, en el header. */
 export function OrgWorkspaceSelector() {

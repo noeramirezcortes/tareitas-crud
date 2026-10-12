@@ -1,5 +1,6 @@
-import { supabase } from '@/lib/supabase/client'
+import { setTaskTags } from '@/features/tags/api'
 import type { Tag } from '@/features/tags/types'
+import { supabase } from '@/lib/supabase/client'
 import { isoDateInDays, todayISODate } from '@/utils/dates'
 
 import type { Task, TaskFilters, TaskInsert, TaskUpdate, TaskWithRelations } from './types'
@@ -82,7 +83,6 @@ export async function createTask(input: TaskInsert, tagIds: string[] = []): Prom
   if (error) throw error
 
   if (tagIds.length > 0) {
-    const { setTaskTags } = await import('@/features/tags/api')
     await setTaskTags(data.id, tagIds)
   }
   return data
@@ -103,7 +103,6 @@ export async function updateTask(
   if (error) throw error
 
   if (tagIds) {
-    const { setTaskTags } = await import('@/features/tags/api')
     await setTaskTags(id, tagIds)
   }
   return data
