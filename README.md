@@ -44,6 +44,7 @@ pnpm dev
 | `pnpm db:types`  | Regenera `src/lib/supabase/database.types.ts` desde la DB vinculada (requiere Supabase CLI + `supabase link`) |
 | `pnpm preview`   | Sirve el build de producción                             |
 | `pnpm test:rls`  | Pruebas de aislamiento multi-tenant y reglas de roles sobre las migraciones reales (PGlite, sin Supabase) |
+| `pnpm test:e2e`  | Pruebas de UI con Playwright contra el Supabase local (`supabase start`; ver `doc/informe-pruebas-ui.md`) |
 
 ## Rutas
 

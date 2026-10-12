@@ -20,7 +20,8 @@
 | 3.3 / 3.4 imports y lint | ✅ (quedan 2 warnings de shadcn, aceptados) |
 | 3.5 CI | ✅ `.github/workflows/ci.yml` (falta verlo en verde en GitHub) |
 | 3.1 tipos generados | ✅ contrastados con `supabase gen types --local` el 2026-10-11: funciones y columnas idénticas; el archivo a mano es más estricto en `tasks.status/priority` y se conserva |
-| 3.6 pruebas de UI | ⏳ deuda |
+| 3.6 pruebas de UI | ✅ Playwright (`pnpm test:e2e`, 23 pruebas) contra Supabase local; informe en `doc/informe-pruebas-ui.md` |
+| Bug hallado por 3.6 | ✅ migración `…07`: el creador que salía de una organización la seguía viendo (`organizations_select` aún usaba `owner_id`) |
 | 3.7 probar migraciones en Supabase real | 🟡 Local hecho (2026-10-11): las 10 migraciones aplican limpias con `supabase start`, `supabase db lint` sin errores y 11/11 comprobaciones de humo con roles y `auth` reales. Falta probarlas en un proyecto remoto de pruebas |
 
 **Decisión tomada (2026-10-11): proyecto "General" por defecto** — migración
