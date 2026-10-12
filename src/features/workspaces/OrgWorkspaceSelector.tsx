@@ -10,6 +10,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { useCurrentBilling } from '@/features/billing/hooks/useBilling'
+import { isAtLimit } from '@/features/billing/limits'
 import { OrganizationFormDialog } from '@/features/organizations/components/OrganizationFormDialog'
 
 import { WorkspaceFormDialog } from './components/WorkspaceFormDialog'
@@ -26,6 +28,8 @@ export function OrgWorkspaceSelector() {
     selectWorkspace,
     isLoading,
   } = useWorkspace()
+  const { data: billing } = useCurrentBilling()
+  const workspaceLimitReached = isAtLimit(billing, 'workspaces')
   const [orgDialogOpen, setOrgDialogOpen] = useState(false)
   const [wsDialogOpen, setWsDialogOpen] = useState(false)
 
@@ -62,6 +66,11 @@ export function OrgWorkspaceSelector() {
                 </Link>
               </DropdownMenuItem>
             )}
+            {currentOrganization && (
+              <DropdownMenuItem asChild>
+                <Link to="/billing">Plan y facturación</Link>
+              </DropdownMenuItem>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
 
@@ -86,7 +95,15 @@ export function OrgWorkspaceSelector() {
             {currentOrganization && (
               <>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onSelect={() => setWsDialogOpen(true)}>Nuevo workspace</DropdownMenuItem>
+                <DropdownMenuItem
+                  disabled={workspaceLimitReached}
+                  onSelect={() => setWsDialogOpen(true)}
+                >
+                  Nuevo workspace
+                  {workspaceLimitReached && (
+                    <span className="ml-auto text-xs text-muted-foreground">Límite del plan</span>
+                  )}
+                </DropdownMenuItem>
               </>
             )}
           </DropdownMenuContent>

@@ -3,6 +3,8 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
+import { useCurrentBilling } from '@/features/billing/hooks/useBilling'
+import { isAtLimit } from '@/features/billing/limits'
 import { EmptyState } from '@/components/common/EmptyState'
 import { ErrorState } from '@/components/common/ErrorState'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
@@ -19,6 +21,8 @@ export function ProjectsPage() {
   const { currentWorkspace } = useWorkspace()
   const { data: projects, isLoading, isError, refetch } = useProjects(currentWorkspace?.id ?? null)
   const deleteProject = useDeleteProject()
+  const { data: billing } = useCurrentBilling()
+  const atLimit = isAtLimit(billing, 'projects')
 
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<ProjectWithTaskCount | null>(null)
@@ -57,11 +61,20 @@ export function ProjectsPage() {
             {projects ? `${projects.length} en total` : 'Agrupa tus tareas'}
           </p>
         </div>
-        <Button onClick={openCreate}>
+        <Button onClick={openCreate} disabled={atLimit}>
           <Plus className="size-4" aria-hidden="true" />
           <span className="hidden sm:inline">Nuevo proyecto</span>
         </Button>
       </div>
+
+      {atLimit && billing && (
+        <p role="status" className="rounded-lg border bg-muted p-3 text-sm">
+          Alcanzaste el límite de {billing.limits.projects} proyectos del plan {billing.plan.name}.{' '}
+          <Link to="/billing" className="font-medium text-primary hover:underline">
+            Ver planes
+          </Link>
+        </p>
+      )}
 
       {isLoading && <LoadingSpinner />}
 
@@ -75,7 +88,7 @@ export function ProjectsPage() {
           title="No tienes proyectos todavía"
           description="Crea un proyecto para agrupar tareas relacionadas."
           action={
-            <Button onClick={openCreate} variant="outline" className="mt-2">
+            <Button onClick={openCreate} variant="outline" className="mt-2" disabled={atLimit}>
               <Plus className="size-4" aria-hidden="true" />
               Crear proyecto
             </Button>

@@ -1,9 +1,11 @@
 import { Check, Plus, Tags } from 'lucide-react'
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { usePlanFeature } from '@/features/billing/hooks/useBilling'
 import { cn } from '@/lib/utils'
 
 import { tagNameSchema } from '../schemas'
@@ -23,6 +25,8 @@ interface TagPickerProps {
 
 export function TagPicker({ options, value, onChange, workspaceId, onCreateTag }: TagPickerProps) {
   const [open, setOpen] = useState(false)
+  // undefined (cargando) no bloquea: el servidor aplica la regla de todos modos.
+  const canCreateTags = usePlanFeature('tags') !== false
   const [newName, setNewName] = useState('')
   const [isCreating, setIsCreating] = useState(false)
   const [createError, setCreateError] = useState<string | null>(null)
@@ -85,6 +89,7 @@ export function TagPicker({ options, value, onChange, workspaceId, onCreateTag }
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-64 p-2" align="start">
+          {canCreateTags ? (
           <div className="flex gap-1">
             <Input
               value={newName}
@@ -112,6 +117,14 @@ export function TagPicker({ options, value, onChange, workspaceId, onCreateTag }
               <Plus className="size-4" />
             </Button>
           </div>
+          ) : (
+          <p className="text-sm text-muted-foreground">
+            Crear etiquetas es una función del plan Pro.{' '}
+            <Link to="/billing" className="font-medium text-primary hover:underline">
+              Ver planes
+            </Link>
+          </p>
+          )}
           {createError && <p className="mt-1 text-xs text-destructive">{createError}</p>}
 
           <ul className="mt-2 max-h-48 overflow-y-auto">

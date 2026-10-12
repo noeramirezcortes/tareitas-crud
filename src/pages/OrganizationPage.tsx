@@ -10,6 +10,8 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { useSession } from '@/features/auth/hooks/useSession'
+import { useBillingStatus } from '@/features/billing/hooks/useBilling'
+import { isAtLimit } from '@/features/billing/limits'
 import { InvitationsPanel } from '@/features/invitations/components/InvitationsPanel'
 import { MembersPanel } from '@/features/memberships/components/MembersPanel'
 import { useMembers } from '@/features/memberships/hooks/useMembers'
@@ -31,6 +33,8 @@ export function OrganizationPage() {
   const navigate = useNavigate()
   const { currentOrganization, orgWorkspaces, currentWorkspace, selectWorkspace, refresh, isLoading } = useWorkspace()
   const members = useMembers(currentOrganization?.id ?? null)
+  const { data: billing } = useBillingStatus(currentOrganization?.id ?? null)
+  const workspaceLimitReached = isAtLimit(billing, 'workspaces')
   const [workspaceDialogOpen, setWorkspaceDialogOpen] = useState(false)
   const [workspaceToDelete, setWorkspaceToDelete] = useState<{ id: string; name: string } | null>(null)
   const [orgDeleteOpen, setOrgDeleteOpen] = useState(false)
@@ -69,6 +73,11 @@ export function OrganizationPage() {
           <h1 className="truncate text-2xl font-bold">{currentOrganization.name}</h1>
           <p className="text-sm text-muted-foreground">Organización y equipo</p>
         </div>
+        {billing && (
+          <Link to="/billing" aria-label={`Plan ${billing.plan.name}: ver plan y facturación`}>
+            <Badge variant="outline">Plan {billing.plan.name}</Badge>
+          </Link>
+        )}
         {myRole && <Badge variant="secondary">Tu rol: {ROLE_LABELS[myRole]}</Badge>}
       </div>
 
@@ -79,7 +88,12 @@ export function OrganizationPage() {
             <CardDescription>Agrupan proyectos y etiquetas dentro de la organización.</CardDescription>
           </div>
           {isAdmin && (
-            <Button size="sm" onClick={() => setWorkspaceDialogOpen(true)}>
+            <Button
+              size="sm"
+              onClick={() => setWorkspaceDialogOpen(true)}
+              disabled={workspaceLimitReached}
+              title={workspaceLimitReached ? 'Alcanzaste el límite de workspaces de tu plan' : undefined}
+            >
               <Plus className="size-4" aria-hidden="true" />
               Nuevo
             </Button>

@@ -1,6 +1,8 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 
+import { billingKeys } from '@/features/billing/api'
+import { notifyPlanLimit } from '@/features/billing/limits'
 import { organizationKeys } from '@/features/organizations/api'
 import { projectKeys } from '@/features/projects/api'
 import { tagKeys } from '@/features/tags/api'
@@ -16,9 +18,11 @@ export function useCreateWorkspace() {
     mutationFn: (input: WorkspaceInsert) => createWorkspace(input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: workspaceKeys.all })
+      queryClient.invalidateQueries({ queryKey: billingKeys.all })
       toast.success('Workspace creado')
     },
     onError: (error) => {
+      if (notifyPlanLimit(error)) return
       toast.error(error.message || 'No se pudo crear el workspace')
     },
   })
@@ -36,6 +40,7 @@ export function useDeleteWorkspace() {
       queryClient.invalidateQueries({ queryKey: projectKeys.all })
       queryClient.invalidateQueries({ queryKey: tagKeys.all })
       queryClient.invalidateQueries({ queryKey: taskKeys.all })
+      queryClient.invalidateQueries({ queryKey: billingKeys.all })
       toast.success('Workspace eliminado')
     },
     onError: (error) => {

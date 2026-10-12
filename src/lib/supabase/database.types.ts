@@ -292,6 +292,53 @@ export interface Database {
           },
         ]
       }
+      plans: {
+        Row: {
+          code: string
+          name: string
+          description: string | null
+          /** null = ilimitado */
+          max_workspaces: number | null
+          max_projects: number | null
+          max_members: number | null
+          features: Record<string, boolean>
+          stripe_price_id: string | null
+          is_public: boolean
+          sort_order: number
+          created_at: string
+        }
+        // Solo lo escribe el servidor (migraciones / SQL Editor).
+        Insert: never
+        Update: never
+        Relationships: []
+      }
+      subscriptions: {
+        Row: {
+          organization_id: string
+          plan_code: string
+          status:
+            | 'incomplete'
+            | 'incomplete_expired'
+            | 'trialing'
+            | 'active'
+            | 'past_due'
+            | 'canceled'
+            | 'unpaid'
+            | 'paused'
+          stripe_subscription_id: string
+          stripe_price_id: string | null
+          current_period_end: string | null
+          cancel_at_period_end: boolean
+          past_due_since: string | null
+          last_event_at: string
+          created_at: string
+          updated_at: string
+        }
+        // Solo lo escribe el webhook de Stripe (service_role).
+        Insert: never
+        Update: never
+        Relationships: []
+      }
     }
     Views: Record<string, never>
     Functions: {
@@ -331,6 +378,11 @@ export interface Database {
       delete_organization: {
         Args: { p_org: string }
         Returns: undefined
+      }
+      /** Plan, límites, consumo y suscripción (ver features/billing/types.ts). */
+      get_billing_status: {
+        Args: { p_org: string }
+        Returns: Record<string, unknown>
       }
     }
     Enums: {

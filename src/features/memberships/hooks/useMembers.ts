@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 
+import { billingKeys } from '@/features/billing/api'
 import type { OrgRole } from '@/features/organizations/types'
 
 import { leaveOrganization, listMembers, memberKeys, removeMember, updateMemberRole } from '../api'
@@ -36,6 +37,7 @@ export function useRemoveMember(organizationId: string) {
     mutationFn: (userId: string) => removeMember(organizationId, userId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: memberKeys.byOrg(organizationId) })
+      queryClient.invalidateQueries({ queryKey: billingKeys.all })
       toast.success('Miembro expulsado')
     },
     onError: (error) => {

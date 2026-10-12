@@ -1,6 +1,8 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
 
+import { usePlanFeature } from '@/features/billing/hooks/useBilling'
 import {
   Dialog,
   DialogContent,
@@ -25,6 +27,7 @@ export function ManageTagsDialog({ open, onOpenChange, workspaceId }: ManageTags
   const createTag = useCreateTag()
   const deleteTag = useDeleteTag()
   const [name, setName] = useState('')
+  const canCreateTags = usePlanFeature('tags') !== false
 
   const handleCreate = () => {
     const parsed = tagNameSchema.safeParse(name)
@@ -51,6 +54,7 @@ export function ManageTagsDialog({ open, onOpenChange, workspaceId }: ManageTags
           </DialogDescription>
         </DialogHeader>
 
+        {canCreateTags ? (
         <div className="flex gap-2">
           <input
             value={name}
@@ -73,6 +77,14 @@ export function ManageTagsDialog({ open, onOpenChange, workspaceId }: ManageTags
             Crear
           </button>
         </div>
+        ) : (
+        <p className="text-sm text-muted-foreground">
+          Crear etiquetas es una función del plan Pro.{' '}
+          <Link to="/billing" className="font-medium text-primary hover:underline">
+            Ver planes
+          </Link>
+        </p>
+        )}
 
         <ul className="max-h-60 space-y-1 overflow-y-auto">
           {tags?.length === 0 && (

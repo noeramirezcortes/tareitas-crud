@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 
+import { notifyPlanLimit } from '@/features/billing/limits'
 import { taskKeys } from '@/features/tasks/api'
 
 import { createTag, deleteTag, tagKeys } from '../api'
@@ -15,6 +16,7 @@ export function useCreateTag() {
       toast.success('Etiqueta creada')
     },
     onError: (error) => {
+      if (notifyPlanLimit(error)) return
       if (error.message?.includes('23505') || error.message?.toLowerCase().includes('unique')) {
         toast.error('Ya existe una etiqueta con ese nombre en este workspace')
       } else {

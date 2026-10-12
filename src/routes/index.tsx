@@ -22,6 +22,9 @@ const ProjectsPage = lazy(() =>
 const OrganizationPage = lazy(() =>
   import('@/pages/OrganizationPage').then((m) => ({ default: m.OrganizationPage })),
 )
+const BillingPage = lazy(() =>
+  import('@/pages/BillingPage').then((m) => ({ default: m.BillingPage })),
+)
 const AcceptInvitationPage = lazy(() =>
   import('@/pages/AcceptInvitationPage').then((m) => ({ default: m.AcceptInvitationPage })),
 )
@@ -43,6 +46,7 @@ export function AppRoutes() {
             <Route path="/tasks" element={<TasksPage />} />
             <Route path="/projects" element={<ProjectsPage />} />
             <Route path="/organization" element={<OrganizationPage />} />
+            <Route path="/billing" element={<BillingPage />} />
             <Route path="/invite/:token" element={<AcceptInvitationPage />} />
           </Route>
         </Route>

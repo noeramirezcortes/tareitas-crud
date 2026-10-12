@@ -1,5 +1,6 @@
 import { Copy, Plus, X } from 'lucide-react'
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
 
 import { ErrorState } from '@/components/common/ErrorState'
@@ -15,6 +16,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { useBillingStatus } from '@/features/billing/hooks/useBilling'
+import { isAtLimit } from '@/features/billing/limits'
 import type { OrgRole } from '@/features/organizations/types'
 import { formatDueDate } from '@/utils/dates'
 
@@ -49,6 +52,8 @@ export function InvitationsPanel({ organizationId, isOwner }: InvitationsPanelPr
   const { data: invitations, isLoading, isError, refetch } = useInvitations(organizationId)
   const createInvitation = useCreateInvitation(organizationId)
   const cancelInvitation = useCancelInvitation(organizationId)
+  const { data: billing } = useBillingStatus(organizationId)
+  const memberLimitReached = isAtLimit(billing, 'members')
 
   const [email, setEmail] = useState('')
   const [role, setRole] = useState<OrgRole>('member')
@@ -74,6 +79,16 @@ export function InvitationsPanel({ organizationId, isOwner }: InvitationsPanelPr
 
   return (
     <div className="space-y-4">
+      {memberLimitReached && billing && (
+        <p role="status" className="rounded-lg border bg-muted p-3 text-sm">
+          Alcanzaste el límite de {billing.limits.members} miembros del plan {billing.plan.name} (las
+          invitaciones pendientes reservan un puesto).{' '}
+          <Link to="/billing" className="font-medium text-primary hover:underline">
+            Ver planes
+          </Link>
+        </p>
+      )}
+
       <form onSubmit={submit} className="grid gap-3 sm:grid-cols-[1fr_9rem_auto] sm:items-end">
         <div className="space-y-2">
           <Label htmlFor="invite-email">Email</Label>
@@ -101,7 +116,7 @@ export function InvitationsPanel({ organizationId, isOwner }: InvitationsPanelPr
           </Select>
         </div>
 
-        <Button type="submit" disabled={createInvitation.isPending}>
+        <Button type="submit" disabled={createInvitation.isPending || memberLimitReached}>
           <Plus className="size-4" aria-hidden="true" />
           Invitar
         </Button>
