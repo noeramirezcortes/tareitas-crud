@@ -34,7 +34,12 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   timeout: 60_000,
   expect: { timeout: 10_000 },
-  reporter: [['list'], ['html', { open: 'never', outputFolder: 'playwright-report' }]],
+  // En CI, el reporter `github` anota cada fallo en la ejecución (visible sin descargar artefactos).
+  reporter: [
+    ['list'],
+    ...(process.env.CI ? [['github'] as ['github']] : []),
+    ['html', { open: 'never', outputFolder: 'playwright-report' }],
+  ],
   outputDir: 'test-results',
   use: {
     baseURL: BASE_URL,

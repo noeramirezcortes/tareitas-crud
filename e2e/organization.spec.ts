@@ -36,7 +36,7 @@ test.describe.serial('Organizaciones, invitaciones y roles', () => {
   async function copyInvitationLink(email: string): Promise<string> {
     const row = owner.getByRole('listitem').filter({ hasText: email })
     await row.getByRole('button', { name: 'Copiar enlace' }).click()
-    await expect(owner.getByText('Enlace copiado')).toBeVisible()
+    await expect(owner.getByText('Enlace copiado').first()).toBeVisible()
     return owner.evaluate(() => navigator.clipboard.readText())
   }
 
@@ -44,7 +44,7 @@ test.describe.serial('Organizaciones, invitaciones y roles', () => {
     await owner.getByLabel('Email').fill(email)
     if (roleLabel) await chooseOption(owner, 'Rol de la invitación', roleLabel)
     await owner.getByRole('button', { name: 'Invitar' }).click()
-    await expect(owner.getByText('Invitación creada. Copia el enlace para compartirlo.')).toBeVisible()
+    await expect(owner.getByText('Invitación creada. Copia el enlace para compartirlo.').first()).toBeVisible()
   }
 
   test('el owner crea una organización y queda como Owner', async () => {
@@ -56,7 +56,7 @@ test.describe.serial('Organizaciones, invitaciones y roles', () => {
     await dialog.getByLabel('Nombre').fill(ORG)
     await dialog.getByRole('button', { name: 'Crear organización' }).click()
 
-    await expect(owner.getByText('Organización creada')).toBeVisible()
+    await expect(owner.getByText('Organización creada').first()).toBeVisible()
     await expect(owner.getByRole('banner')).toContainText(ORG)
 
     await owner.goto('/organization')
@@ -107,7 +107,7 @@ test.describe.serial('Organizaciones, invitaciones y roles', () => {
     await expect(invitation).toContainText('Aceptada')
 
     await chooseOption(owner, `Rol de ${memberEmail}`, 'Admin')
-    await expect(owner.getByText('Rol actualizado')).toBeVisible()
+    await expect(owner.getByText('Rol actualizado').first()).toBeVisible()
 
     await member.reload()
     await expect(member.getByText('Tu rol: Admin')).toBeVisible()
@@ -139,7 +139,7 @@ test.describe.serial('Organizaciones, invitaciones y roles', () => {
     await myRow.getByRole('button', { name: 'Salir' }).click()
     await owner.getByRole('dialog', { name: 'Salir de la organización' }).getByRole('button', { name: 'Salir' }).click()
 
-    await expect(owner.getByText('La organización debe tener al menos un owner')).toBeVisible()
+    await expect(owner.getByText('La organización debe tener al menos un owner').first()).toBeVisible()
     // Sigue siendo owner de la organización.
     await owner.reload()
     await expect(owner.getByText('Tu rol: Owner')).toBeVisible()
@@ -147,13 +147,13 @@ test.describe.serial('Organizaciones, invitaciones y roles', () => {
 
   test('tras promover a otro owner, el primero puede salir', async () => {
     await chooseOption(owner, `Rol de ${memberEmail}`, 'Owner')
-    await expect(owner.getByText('Rol actualizado')).toBeVisible()
+    await expect(owner.getByText('Rol actualizado').first()).toBeVisible()
 
     const myRow = owner.getByRole('listitem').filter({ hasText: '(tú)' })
     await myRow.getByRole('button', { name: 'Salir' }).click()
     await owner.getByRole('dialog', { name: 'Salir de la organización' }).getByRole('button', { name: 'Salir' }).click()
 
-    await expect(owner.getByText('Has salido de la organización')).toBeVisible()
+    await expect(owner.getByText('Has salido de la organización').first()).toBeVisible()
     await expect(owner).toHaveURL(/\/dashboard$/)
     // Vuelve a su organización personal y ya no tiene acceso a la otra.
     await expect(owner.getByRole('banner')).toContainText(`Personal de ${ownerEmail}`)
@@ -170,7 +170,7 @@ test.describe.serial('Organizaciones, invitaciones y roles', () => {
     const wsDialog = member.getByRole('dialog', { name: 'Nuevo workspace' })
     await wsDialog.getByLabel('Nombre').fill('Marketing')
     await wsDialog.getByRole('button', { name: /Crear/ }).click()
-    await expect(member.getByText('Workspace creado')).toBeVisible()
+    await expect(member.getByText('Workspace creado').first()).toBeVisible()
 
     await createTask(member, 'Se borra con el workspace')
     await expect(member.getByRole('listitem').filter({ hasText: 'Se borra con el workspace' })).toBeVisible()
@@ -185,7 +185,7 @@ test.describe.serial('Organizaciones, invitaciones y roles', () => {
     await expect(confirm).toContainText('Se eliminarán 0 proyectos, 0 etiquetas y 1 tarea.')
     await confirm.getByRole('button', { name: 'Eliminar workspace' }).click()
 
-    await expect(member.getByText('Workspace eliminado')).toBeVisible()
+    await expect(member.getByText('Workspace eliminado').first()).toBeVisible()
     // Queda un único workspace y ya no se ofrece borrarlo.
     await expect(member.getByText('Último workspace: no se puede borrar')).toBeVisible()
   })
@@ -196,7 +196,7 @@ test.describe.serial('Organizaciones, invitaciones y roles', () => {
     await expect(confirm).toContainText('tareas, miembros e invitaciones')
     await confirm.getByRole('button', { name: 'Eliminar definitivamente' }).click()
 
-    await expect(member.getByText('Organización eliminada')).toBeVisible()
+    await expect(member.getByText('Organización eliminada').first()).toBeVisible()
     await expect(member).toHaveURL(/\/dashboard$/)
     await expect(member.getByRole('banner')).toContainText(`Personal de ${memberEmail}`)
   })

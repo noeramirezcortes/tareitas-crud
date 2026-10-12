@@ -43,7 +43,7 @@ test.describe('Autenticación y onboarding', () => {
     await page.getByLabel('Contraseña', { exact: true }).fill(`${PASSWORD}-mal`)
     await page.getByRole('button', { name: 'Entrar' }).click()
 
-    await expect(page.getByText('No se pudo iniciar sesión. Revisa tus credenciales.')).toBeVisible()
+    await expect(page.getByText('No se pudo iniciar sesión. Revisa tus credenciales.').first()).toBeVisible()
     await expect(page).toHaveURL(/\/login$/)
   })
 

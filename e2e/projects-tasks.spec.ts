@@ -68,7 +68,7 @@ test.describe.serial('Proyecto General por defecto', () => {
     await expect(dialog).toContainText('Sus 1 tarea se moverán a General')
     await dialog.getByRole('button', { name: 'Eliminar' }).click()
 
-    await expect(page.getByText('Proyecto eliminado. 1 tarea se movió a General.')).toBeVisible()
+    await expect(page.getByText('Proyecto eliminado. 1 tarea se movió a General.').first()).toBeVisible()
     await expect(page.getByRole('link', { name: 'Marketing' })).toHaveCount(0)
 
     // La tarea sigue visible y ahora pertenece a General.
