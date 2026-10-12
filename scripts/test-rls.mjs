@@ -29,6 +29,7 @@ $$;
 do $$ begin
   if not exists (select 1 from pg_roles where rolname = 'anon') then create role anon nologin; end if;
   if not exists (select 1 from pg_roles where rolname = 'authenticated') then create role authenticated nologin; end if;
+  if not exists (select 1 from pg_roles where rolname = 'service_role') then create role service_role nologin; end if;
 end $$;
 grant usage on schema auth to anon, authenticated;
 grant execute on function auth.uid() to anon, authenticated;
@@ -130,6 +131,18 @@ async function asUserSession(uid, fn) {
   }
 }
 
+const check = (label, cond, detail = '') => (cond ? ok(label) : fail(label, detail || 'condición falsa'))
+
+// Como el servidor (Edge Function): rol service_role, sin RLS de usuario.
+async function asServiceRole(fn) {
+  await db.exec('set role service_role')
+  try {
+    return await fn()
+  } finally {
+    await db.exec('reset role')
+  }
+}
+
 const scalar = async (sql, params = []) => Number((await db.query(sql, params)).rows[0].n)
 const rowsOf = async (sql, params = []) => (await db.query(sql, params)).rows.length
 const one = async (sql, params = []) => (await db.query(sql, params)).rows[0]
@@ -161,7 +174,7 @@ for (const f of after) {
   ok(`aplicada ${f}`)
 }
 await db.exec(`
-  grant usage on schema public to anon, authenticated;
+  grant usage on schema public to anon, authenticated, service_role;
   grant select, insert, update, delete on all tables in schema public to authenticated;
 `)
 
@@ -191,6 +204,13 @@ const wsA = await personalWs(uA)
 const wsB = await personalWs(uB)
 const orgA = wsA.organization_id
 const orgB = wsB.organization_id
+// Las secciones 3–13 prueban roles y aislamiento con muchos miembros,
+// proyectos y etiquetas: se ejecutan como Pro. Los límites del plan Free
+// se prueban en la sección 14.
+await db.query(
+  `insert into public.subscriptions (organization_id, plan_code, status, stripe_subscription_id, last_event_at)
+   values ($1, 'pro', 'active', 'sub_seed_a', now()), ($2, 'pro', 'active', 'sub_seed_b', now())`,
+  [orgA, orgB])
 
 // ------------------------------------------------------------
 console.log('\n== 3. Aislamiento entre dos organizaciones (A vs B) ==')
@@ -578,6 +598,12 @@ await asUserSession(uC, async () => {
     'Solo un owner')
 })
 await asUserSession(uA, async () => {
+  await expectBlock('con suscripción vigente (Pro sembrada) no se puede eliminar', () =>
+    db.query('select public.delete_organization($1)', [orgA]),
+    'Cancela la suscripción')
+})
+await db.query(`update public.subscriptions set status = 'canceled' where organization_id = $1`, [orgA])
+await asUserSession(uA, async () => {
   await db.query('select public.delete_organization($1)', [orgA])
   ok('el owner elimina su organización')
 })
@@ -593,6 +619,231 @@ await expectRows('sus membresías e invitaciones desaparecen', () =>
   scalar(`select count(*) n from public.memberships where organization_id = '${orgA}'`), 0)
 await expectRows('sus tareas se eliminan, no quedan huérfanas', () =>
   scalar(`select count(*) n from public.tasks where title = 'Tarea A'`), 0)
+
+
+// ------------------------------------------------------------
+console.log('\n== 14. Billing: planes, límites y suscripciones ==')
+const PRO_PRICE = 'price_test_pro'
+await db.query(`update public.plans set stripe_price_id = $1 where code = 'pro'`, [PRO_PRICE])
+
+const uP = (await one("insert into auth.users (email) values ('p@test') returning id")).id
+const uQ = (await one("insert into auth.users (email) values ('q@test') returning id")).id
+const uR = (await one("insert into auth.users (email) values ('r@test') returning id")).id
+const uS = (await one("insert into auth.users (email) values ('s@test') returning id")).id
+const wsP = await personalWs(uP)
+const orgP = wsP.organization_id
+const orgQ = (await personalWs(uQ)).organization_id
+
+const status = async (uid, org) =>
+  asUserSession(uid, async () => (await one('select public.get_billing_status($1) as s', [org])).s)
+
+let eventSeq = 0
+const T0 = Date.parse('2026-10-01T00:00:00Z')
+// Aplica un evento como lo haría el webhook. `at` = minutos desde T0.
+const applyEvent = (over = {}) => {
+  eventSeq += 1
+  const e = {
+    id: `evt_${eventSeq}`,
+    type: 'customer.subscription.updated',
+    at: eventSeq,
+    org: orgP,
+    sub: 'sub_P',
+    status: 'active',
+    price: PRO_PRICE,
+    periodEnd: new Date(T0 + 30 * 86400000).toISOString(),
+    cancelAtEnd: false,
+    ...over,
+  }
+  return asServiceRole(async () =>
+    (await one('select public.billing_apply_subscription($1,$2,$3,$4,$5,$6,$7,$8,$9) as r', [
+      e.id, e.type, new Date(T0 + e.at * 60000).toISOString(), e.org, e.sub, e.status, e.price, e.periodEnd, e.cancelAtEnd,
+    ])).r)
+}
+
+console.log('  -- catálogo y permisos --')
+await asUserTx(uP, async () => {
+  await expectRows('un usuario ve el catálogo de planes', () => scalar('select count(*) n from public.plans'), 2)
+  await expectBlock('un usuario no puede crear planes', () =>
+    db.query(`insert into public.plans (code, name) values ('hack', 'Hack')`), 'row-level security')
+  await expectRows('un usuario no puede relajar los límites del plan (0 filas)', () =>
+    rowsOf(`update public.plans set max_projects = null where code = 'free' returning code`), 0)
+  await expectBlock('un usuario no puede escribir suscripciones', () =>
+    db.query(`insert into public.subscriptions (organization_id, plan_code, status, stripe_subscription_id, last_event_at)
+              values ($1, 'pro', 'active', 'sub_hack', now())`, [orgP]), 'row-level security')
+  await expectBlock('un usuario no puede aplicar eventos de Stripe', () =>
+    db.query(`select public.billing_apply_subscription('evt_x','t', now(), $1, 's', 'active', 'p', null, false)`, [orgP]),
+    'permission denied')
+  await expectRows('stripe_events no es visible para usuarios', () => scalar('select count(*) n from public.stripe_events'), 0)
+  await expectRows('billing_customers no es visible para usuarios', () => scalar('select count(*) n from public.billing_customers'), 0)
+  await expectBlock('no se puede ver el billing de otra organización', () =>
+    db.query('select public.get_billing_status($1)', [orgB]), 'No perteneces')
+})
+
+console.log('  -- plan Free por defecto --')
+{
+  const st = await status(uP, orgP)
+  check('toda organización parte en el plan free', st.plan.code === 'free', JSON.stringify(st.plan))
+  check('límites free: 2 workspaces, 5 proyectos, 3 miembros',
+    st.limits.workspaces === 2 && st.limits.projects === 5 && st.limits.members === 3, JSON.stringify(st.limits))
+  check('consumo inicial: 1 workspace, 0 proyectos (General no cuenta), 1 miembro',
+    st.usage.workspaces === 1 && st.usage.projects === 0 && st.usage.members === 1, JSON.stringify(st.usage))
+  check('el owner puede gestionar y no hay suscripción', st.can_manage === true && st.subscription === null)
+}
+
+console.log('  -- límites del plan Free --')
+await asUserSession(uP, async () => {
+  await expectRows('workspace 2 de 2 permitido', () =>
+    rowsOf(`insert into public.workspaces (organization_id, name) values ($1, 'W2') returning id`, [orgP]), 1)
+  await expectBlock('workspace 3 bloqueado por el plan', () =>
+    db.query(`insert into public.workspaces (organization_id, name) values ($1, 'W3')`, [orgP]),
+    'límite de 2 workspaces')
+  for (let i = 1; i <= 5; i++) {
+    await db.query(`insert into public.projects (workspace_id, name) values ($1, $2)`, [wsP.id, `P${i}`])
+  }
+  ok('5 proyectos creados (General no cuenta)')
+  await expectBlock('proyecto 6 bloqueado por el plan', () =>
+    db.query(`insert into public.projects (workspace_id, name) values ($1, 'P6')`, [wsP.id]),
+    'límite de 5 proyectos')
+  await expectBlock('el límite es por organización, no por workspace', () =>
+    db.query(`insert into public.projects (workspace_id, name)
+              select id, 'PX' from public.workspaces where organization_id = $1 and name = 'W2'`, [orgP]),
+    'límite de 5 proyectos')
+  await expectBlock('crear etiquetas es función Pro', () =>
+    db.query(`insert into public.tags (workspace_id, name) values ($1, 'nueva')`, [wsP.id]),
+    'plan Pro')
+  try {
+    await db.query(`insert into public.projects (workspace_id, name) values ($1, 'P6')`, [wsP.id])
+    fail('el error de límite lleva SQLSTATE PT402', 'no falló')
+  } catch (e) {
+    check('el error de límite lleva SQLSTATE PT402 (HTTP 402) y hint "projects"',
+      e.code === 'PT402' && e.hint === 'projects', `code=${e.code} hint=${e.hint}`)
+  }
+})
+
+// Miembros: orgP tiene 1 (owner). Se llena con membresías directas.
+await db.query("insert into public.memberships (user_id, organization_id, role) values ($1, $2, 'member')", [uQ, orgP])
+await db.query("insert into public.memberships (user_id, organization_id, role) values ($1, $2, 'member')", [uR, orgP])
+ok('miembros 2 y 3 de 3 permitidos')
+await expectBlock('miembro 4 bloqueado por el plan', () =>
+  db.query("insert into public.memberships (user_id, organization_id, role) values ($1, $2, 'member')", [uS, orgP]),
+  'límite de 3 miembros')
+await asUserSession(uP, async () => {
+  await expectBlock('no se puede invitar con la organización llena', () =>
+    db.query(`insert into public.invitations (email, organization_id, invited_by, role)
+              values ('nuevo@test', $1, $2, 'member')`, [orgP, uP]),
+    'límite de 3 miembros')
+})
+await db.query('delete from public.memberships where user_id = $1 and organization_id = $2', [uR, orgP])
+await asUserSession(uP, async () => {
+  await expectRows('con 2 miembros se puede invitar a 1 más', () =>
+    rowsOf(`insert into public.invitations (email, organization_id, invited_by, role)
+            values ('uno@test', $1, $2, 'member') returning id`, [orgP, uP]), 1)
+  await expectBlock('la invitación pendiente ocupa el último puesto', () =>
+    db.query(`insert into public.invitations (email, organization_id, invited_by, role)
+              values ('dos@test', $1, $2, 'member')`, [orgP, uP]),
+    'invitaciones pendientes')
+})
+
+console.log('  -- visibilidad de la suscripción --')
+await applyEvent({ id: 'evt_visibility', at: 5 })
+await asUserTx(uP, async () => {
+  await expectRows('el owner ve la suscripción de su organización', () =>
+    scalar('select count(*) n from public.subscriptions'), 1)
+  await expectRows('el owner no puede cambiar el plan por SQL (0 filas)', () =>
+    rowsOf(`update public.subscriptions set plan_code = 'free' returning organization_id`), 0)
+  await expectRows('el owner no puede borrar la suscripción (0 filas)', () =>
+    rowsOf('delete from public.subscriptions returning organization_id'), 0)
+})
+await asUserTx(uQ, async () => {
+  await expectRows('un member no ve la suscripción (solo owners/admins)', () =>
+    scalar('select count(*) n from public.subscriptions'), 0)
+  const st = (await one('select public.get_billing_status($1) as s', [orgP])).s
+  check('pero sí ve el plan por get_billing_status, sin poder gestionarlo',
+    st.plan.code === 'pro' && st.can_manage === false, JSON.stringify(st.plan))
+})
+
+console.log('  -- eventos de Stripe --')
+{
+  const st = await status(uP, orgP)
+  check('un evento active con el precio Pro sube a Pro y quita los límites',
+    st.plan.code === 'pro' && st.limits.projects === null && st.limits.members === null, JSON.stringify(st.limits))
+  check('la suscripción expone estado y fin de periodo',
+    st.subscription.status === 'active' && st.subscription.current_period_end !== null)
+}
+await asUserSession(uP, async () => {
+  await expectRows('con Pro se puede crear el proyecto 6', () =>
+    rowsOf(`insert into public.projects (workspace_id, name) values ($1, 'P6') returning id`, [wsP.id]), 1)
+  await expectRows('con Pro se pueden crear etiquetas', () =>
+    rowsOf(`insert into public.tags (workspace_id, name) values ($1, 'nueva') returning id`, [wsP.id]), 1)
+  await expectRows('con Pro se puede crear el workspace 3', () =>
+    rowsOf(`insert into public.workspaces (organization_id, name) values ($1, 'W3') returning id`, [orgP]), 1)
+})
+check('el mismo evento (reintento de Stripe) es idempotente',
+  (await applyEvent({ id: 'evt_visibility', at: 6, status: 'canceled' })) === 'duplicate')
+check('un evento más antiguo se descarta como stale',
+  (await applyEvent({ at: 0, status: 'canceled' })) === 'stale')
+check('un evento "terminada" de una suscripción anterior no tumba la vigente',
+  (await applyEvent({ at: 20, sub: 'sub_old', status: 'canceled' })) === 'ignored')
+check('un precio desconocido en la misma suscripción no cambia el plan',
+  (await applyEvent({ at: 21, price: 'price_unknown' })) === 'applied' && (await status(uP, orgP)).plan.code === 'pro')
+await expectBlock('un precio desconocido sin suscripción previa falla (Stripe reintentará)', () =>
+  applyEvent({ id: 'evt_unknown', org: orgQ, sub: 'sub_Q', price: 'price_unknown' }), 'Precio de Stripe desconocido')
+await expectRows('el evento fallido no queda registrado', () =>
+  scalar(`select count(*) n from public.stripe_events where event_id = 'evt_unknown'`), 0)
+check('un evento de una organización inexistente se ignora',
+  (await applyEvent({ at: 22, org: '00000000-0000-0000-0000-000000000000', sub: 'sub_gone' })) === 'ignored')
+
+console.log('  -- pago fallido y gracia de 7 días --')
+check('past_due se aplica', (await applyEvent({ at: 30, status: 'past_due' })) === 'applied')
+{
+  const st = await status(uP, orgP)
+  check('en gracia (past_due < 7 días) conserva el plan Pro',
+    st.plan.code === 'pro' && st.subscription.status === 'past_due' && st.subscription.grace_ends_at !== null)
+}
+await db.query(`update public.subscriptions set past_due_since = now() - interval '8 days' where organization_id = $1`, [orgP])
+check('pasada la gracia vuelve a Free', (await status(uP, orgP)).plan.code === 'free')
+await applyEvent({ at: 31, status: 'past_due' })
+check('otro evento past_due no reinicia la gracia',
+  (await status(uP, orgP)).plan.code === 'free')
+await applyEvent({ at: 32, status: 'active' })
+{
+  const st = await status(uP, orgP)
+  check('al pagar vuelve a Pro y se limpia la gracia',
+    st.plan.code === 'pro' && st.subscription.past_due_since === null)
+}
+
+console.log('  -- cancelación y bajada de plan --')
+await asUserSession(uP, async () => {
+  await expectBlock('no se puede eliminar la organización con suscripción vigente', () =>
+    db.query('select public.delete_organization($1)', [orgP]), 'Cancela la suscripción')
+})
+check('cancelar (customer.subscription.deleted) se aplica',
+  (await applyEvent({ at: 40, type: 'customer.subscription.deleted', status: 'canceled' })) === 'applied')
+{
+  const st = await status(uP, orgP)
+  check('tras cancelar vuelve a Free', st.plan.code === 'free' && st.subscription.status === 'canceled')
+  check('lo ya creado se conserva por encima del límite (6 proyectos, 3 workspaces)',
+    st.usage.projects === 6 && st.usage.workspaces === 3, JSON.stringify(st.usage))
+}
+await asUserSession(uP, async () => {
+  await expectBlock('pero no se puede crear más por encima del límite', () =>
+    db.query(`insert into public.projects (workspace_id, name) values ($1, 'P7')`, [wsP.id]),
+    'límite de 5 proyectos')
+})
+check('volver a suscribirse con otra suscripción reactiva Pro',
+  (await applyEvent({ at: 50, type: 'customer.subscription.created', sub: 'sub_P2', status: 'active' })) === 'applied'
+    && (await status(uP, orgP)).plan.code === 'pro')
+check('el evento tardío de la suscripción anterior no la desactiva',
+  (await applyEvent({ at: 45, sub: 'sub_P', status: 'canceled' })) === 'stale')
+
+console.log('  -- eliminar la organización --')
+await applyEvent({ at: 60, sub: 'sub_P2', type: 'customer.subscription.deleted', status: 'canceled' })
+await asUserSession(uP, async () => {
+  await db.query('select public.delete_organization($1)', [orgP])
+  ok('sin suscripción vigente la organización se elimina')
+})
+await expectRows('su suscripción desaparece en cascada', () =>
+  scalar(`select count(*) n from public.subscriptions where organization_id = '${orgP}'`), 0)
 
 // ------------------------------------------------------------
 console.log(`\n${passes} comprobaciones correctas, ${failures} fallidas`)

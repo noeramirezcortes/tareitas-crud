@@ -43,7 +43,12 @@ from (
     ('20261012000007_organizations_select_members',
       exists (select 1 from pg_policies
               where schemaname = 'public' and tablename = 'organizations'
-                and policyname = 'organizations_select' and qual not like '%owner_id%'))
+                and policyname = 'organizations_select' and qual not like '%owner_id%')),
+    ('20261013000000_fase4_billing',
+      to_regclass('public.plans') is not null
+      and to_regclass('public.subscriptions') is not null
+      and exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+                  where n.nspname = 'public' and p.proname = 'billing_apply_subscription'))
 ) as m (migracion, aplicada)
 order by migracion;
 
