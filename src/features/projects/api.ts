@@ -12,6 +12,7 @@ export async function listProjects(workspaceId: string): Promise<ProjectWithTask
     .from('projects')
     .select('*, tasks(count)')
     .eq('workspace_id', workspaceId)
+    .order('is_default', { ascending: false })
     .order('created_at', { ascending: false })
 
   if (error) throw error

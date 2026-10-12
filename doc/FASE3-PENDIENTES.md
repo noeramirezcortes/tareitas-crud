@@ -23,16 +23,39 @@
 | 3.6 pruebas de UI | ⏳ deuda |
 | 3.7 probar migraciones en Supabase real | 🟡 Local hecho (2026-10-11): las 10 migraciones aplican limpias con `supabase start`, `supabase db lint` sin errores y 11/11 comprobaciones de humo con roles y `auth` reales. Falta probarlas en un proyecto remoto de pruebas |
 
-**Decisiones abiertas detectadas al cerrar (no estaban en este documento):**
+**Decisión tomada (2026-10-11): proyecto "General" por defecto** — migración
+`20261012000006_default_project.sql`.
 
-1. **Tareas sin proyecto.** `tasks.project_id` es `on delete set null`, pero la
-   RLS de `tasks` exige un proyecto y `user_id` ya no existe: una tarea con
-   `project_id = null` es inaccesible para todos. Opciones: (a) `on delete
-   cascade` (se borran de verdad, sin filas huérfanas), (b) un proyecto
-   "Bandeja" por workspace al que migran, (c) dejarlo como está.
-2. **El formulario de tareas ofrece "Sin proyecto" (valor por defecto)**, pero
-   `tasks_insert` rechaza `project_id` nulo: crear una tarea sin elegir
-   proyecto falla. Hay que exigir proyecto en el formulario o implementar (b).
+- Cada workspace tiene un proyecto `General` (`projects.is_default`). Se crea
+  con el workspace y se rellenó para los existentes (si ya había uno llamado
+  "general", se reutiliza).
+- Al borrar un proyecto, sus tareas **se mueven a General** y la UI avisa
+  (toast con el número de tareas movidas). General no se puede eliminar.
+- El formulario de tareas ya no ofrece "Sin proyecto": el valor por defecto es
+  General.
+- Borrar un workspace u organización **elimina** sus tareas (cascada); el
+  diálogo de confirmación muestra cuántas.
+
+**Acción manual pendiente en producción — tareas huérfanas de legado.** La
+migración `20261010` borró `tasks.user_id` sin asignar las tareas de Fases 1-2
+que no tenían proyecto: tienen `project_id is null` y nadie puede verlas. No se
+puede deducir a qué workspace pertenecen. Para saber si hay y recuperarlas, en el
+SQL Editor de Supabase:
+
+```sql
+-- ¿Cuántas hay?
+select count(*) from public.tasks where project_id is null;
+
+-- Si eres el único usuario: moverlas al General de tu workspace personal.
+update public.tasks
+set project_id = (
+  select p.id from public.projects p
+  join public.workspaces w on w.id = p.workspace_id
+  join public.memberships m on m.organization_id = w.organization_id
+  where m.user_id = '<TU_USER_ID>' and w.name = 'Personal' and p.is_default
+)
+where project_id is null;
+```
 
 ---
 

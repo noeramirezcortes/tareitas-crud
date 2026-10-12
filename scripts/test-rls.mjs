@@ -144,7 +144,9 @@ for (const f of before) {
 
 const uA = (await one("insert into auth.users (email) values ('a@test') returning id")).id
 const uB = (await one("insert into auth.users (email) values ('b@test') returning id")).id
-const pA = (await one('insert into public.projects (user_id, name) values ($1, $2) returning id', [uA, 'Proyecto A'])).id
+// El proyecto de A ya se llama "general": la migración del proyecto por
+// defecto debe reutilizarlo (sin duplicar) en vez de crear otro "General".
+const pA = (await one('insert into public.projects (user_id, name) values ($1, $2) returning id', [uA, 'general'])).id
 await db.query('insert into public.projects (user_id, name) values ($1, $2)', [uB, 'Proyecto B'])
 await db.query('insert into public.tags (user_id, name) values ($1, $2)', [uA, 'etiqueta-A'])
 await db.query('insert into public.tags (user_id, name) values ($1, $2)', [uB, 'etiqueta-B'])
@@ -163,8 +165,15 @@ await db.exec(`
   grant select, insert, update, delete on all tables in schema public to authenticated;
 `)
 
-await expectRows('proyectos conservados', () => scalar('select count(*) n from public.projects'), 2)
-await expectRows('proyectos con workspace_id', () => scalar('select count(*) n from public.projects where workspace_id is not null'), 2)
+// 2 originales + 1 "General" nuevo para B (el de A se reutiliza).
+await expectRows('proyectos conservados + General nuevo', () => scalar('select count(*) n from public.projects'), 3)
+await expectRows('proyectos con workspace_id', () => scalar('select count(*) n from public.projects where workspace_id is not null'), 3)
+await expectRows('un único proyecto por defecto por workspace', () =>
+  scalar('select count(*) n from public.projects where is_default'), 2)
+await expectRows('el proyecto "general" de A se reutiliza como el de por defecto', () =>
+  scalar(`select count(*) n from public.projects where id = '${pA}' and is_default`), 1)
+await expectRows('B recibe un proyecto General nuevo', () =>
+  scalar(`select count(*) n from public.projects where name = 'General' and is_default`), 1)
 await expectRows('tags conservados', () => scalar('select count(*) n from public.tags'), 2)
 await expectRows('tareas conservadas', () => scalar('select count(*) n from public.tasks'), 1)
 await expectRows('vínculos task_tags conservados', () => scalar('select count(*) n from public.task_tags'), 1)
@@ -229,8 +238,8 @@ console.log('\n== 5. Roles en orgA: owner, admin, member ==')
 await db.query("insert into public.memberships (user_id, organization_id, role) values ($1, $2, 'member')", [uB, orgA])
 
 await asUserTx(uB, async () => {
-  await expectRows('member ve los proyectos de orgA (2 = el suyo + el de A)', () =>
-    scalar('select count(*) n from public.projects'), 2)
+  await expectRows('member ve los proyectos de orgA (3 = los 2 de su org + el de A)', () =>
+    scalar('select count(*) n from public.projects'), 3)
   await expectError('member no puede invitar', () =>
     db.query(`insert into public.invitations (email, organization_id, invited_by, role) values ('x@test', $1, $2, 'member')`, [orgA, uB]))
 })
@@ -296,7 +305,9 @@ await asUserSession(uC, async () => {
   const org = (await one('select public.accept_invitation($1) as id', [tokenC])).id
   await expectRows('C acepta y queda en orgA', () => scalar(`select count(*) n from public.memberships where user_id = '${uC}' and organization_id = '${org}'`), 1)
   await expectError('la misma invitación no se acepta dos veces', () => db.query('select public.accept_invitation($1)', [tokenC]))
-  await expectRows('C (member) ve el proyecto de orgA y ningún otro', () => scalar('select count(*) n from public.projects'), 1)
+  // C tiene además su propia org personal (con su General): se acota a orgA.
+  await expectRows('C (member) ve el proyecto de orgA', () =>
+    scalar(`select count(*) n from public.projects where workspace_id = '${wsA.id}'`), 1)
   await expectError('C (member) no puede invitar', () =>
     db.query(`insert into public.invitations (email, organization_id, invited_by, role) values ('q@test', $1, $2, 'member')`, [orgA, uC]))
 })
@@ -390,7 +401,7 @@ await asUserSession(uC, async () => {
 })
 await asUserTx(uC, async () => {
   await expectRows('tras salir, C ya no ve los proyectos de orgA', () =>
-    scalar('select count(*) n from public.projects'), 0)
+    scalar(`select count(*) n from public.projects where workspace_id = '${wsA.id}'`), 0)
   await expectRows('tras salir, C ya no ve la organización', () =>
     scalar(`select count(*) n from public.organizations where id = '${orgA}'`), 0)
 })
@@ -479,34 +490,63 @@ await expectRows('E conserva el rol admin (no se degrada por invitación)', () =
   scalar(`select count(*) n from public.memberships where user_id = '${uE}' and organization_id = '${orgA}' and role = 'admin'`), 1)
 
 // ------------------------------------------------------------
-console.log('\n== 12. Eliminar workspaces y organizaciones ==')
-// orgB (personal de B) tiene un único workspace.
+console.log('\n== 12. Proyecto General por defecto ==')
+// B (owner de orgB, member de orgA). Su workspace personal ya tiene General.
+const defaultOf = async (workspaceId) =>
+  (await one('select id from public.projects where workspace_id = $1 and is_default', [workspaceId])).id
+
+await asUserSession(uB, async () => {
+  // Un workspace nuevo crea su General (y insert ... returning funciona:
+  // regresión de workspaces_select, migración …000004).
+  const w2 = (await one(`insert into public.workspaces (organization_id, name) values ($1, 'Temporal') returning id`, [orgB])).id
+  await expectRows('un workspace nuevo crea su proyecto General por defecto', () =>
+    scalar(`select count(*) n from public.projects where workspace_id = '${w2}' and is_default and name = 'General'`), 1)
+  const general = await defaultOf(w2)
+
+  await expectError('una tarea sin proyecto no se puede crear', () =>
+    db.query(`insert into public.tasks (project_id, title) values (null, 'huérfana')`))
+
+  // Borrar un proyecto mueve sus tareas a General.
+  const p1 = (await one(`insert into public.projects (workspace_id, name) values ($1, 'P1') returning id`, [w2])).id
+  const t1 = (await one(`insert into public.tasks (project_id, title) values ($1, 'T1') returning id`, [p1])).id
+  const t2 = (await one(`insert into public.tasks (project_id, title) values ($1, 'T2') returning id`, [p1])).id
+  await expectRows('borrar un proyecto funciona', () =>
+    rowsOf(`delete from public.projects where id = $1 returning id`, [p1]), 1)
+  await expectRows('sus tareas se mueven a General y siguen accesibles', () =>
+    scalar(`select count(*) n from public.tasks where id in ('${t1}', '${t2}') and project_id = '${general}'`), 2)
+
+  await expectBlock('el proyecto General no se puede eliminar', () =>
+    db.query(`delete from public.projects where id = $1`, [general]),
+    'no se puede eliminar')
+  await expectBlock('General no puede dejar de ser el de por defecto', () =>
+    db.query(`update public.projects set is_default = false where id = $1`, [general]),
+    'por defecto')
+  const other = (await one(`insert into public.projects (workspace_id, name) values ($1, 'Otro') returning id`, [w2])).id
+  await expectBlock('otro proyecto no puede pasar a ser el de por defecto', () =>
+    db.query(`update public.projects set is_default = true where id = $1`, [other]),
+    'por defecto')
+  await expectError('no se puede crear un segundo proyecto por defecto', () =>
+    db.query(`insert into public.projects (workspace_id, name, is_default) values ($1, 'Falso', true)`, [w2]))
+  await expectRows('General se puede renombrar', () =>
+    rowsOf(`update public.projects set name = 'Bandeja' where id = $1 returning id`, [general]), 1)
+
+  // Borrar el workspace no tiene adónde mover: las tareas se eliminan.
+  await expectRows('borrar el workspace funciona (hay otro workspace)', () =>
+    rowsOf(`delete from public.workspaces where id = $1 returning id`, [w2]), 1)
+  await expectRows('sus proyectos y General desaparecen', () =>
+    scalar(`select count(*) n from public.projects where workspace_id = '${w2}'`), 0)
+  await expectRows('sus tareas se eliminan, no quedan huérfanas', () =>
+    scalar(`select count(*) n from public.tasks where id in ('${t1}', '${t2}')`), 0)
+})
+
+// ------------------------------------------------------------
+console.log('\n== 13. Eliminar workspaces y organizaciones ==')
+// orgB (personal de B) vuelve a tener un único workspace.
 await asUserTx(uB, async () => {
   await expectBlock('no se puede borrar el último workspace', () =>
     db.query(`delete from public.workspaces where id = $1`, [wsB.id]),
     'al menos un workspace')
 })
-
-// Con dos workspaces, borrar uno funciona: el proyecto muere en cascada
-// y la tarea sobrevive con project_id = null.
-let taskOrphan = null
-await asUserSession(uB, async () => {
-  // insert ... returning: regresión de workspaces_select (migración …000004).
-  const w2 = (await one(`insert into public.workspaces (organization_id, name) values ($1, 'Temporal') returning id`, [orgB])).id
-  const proj = (await one(`insert into public.projects (workspace_id, name) values ($1, 'Proy temporal') returning id`, [w2])).id
-  const task = (await one(`insert into public.tasks (project_id, title) values ($1, 'Tarea temporal') returning id`, [proj])).id
-  await expectRows('con dos workspaces, borrar uno funciona', () =>
-    rowsOf(`delete from public.workspaces where id = $1 returning id`, [w2]), 1)
-  await expectRows('su proyecto se borra en cascada', () =>
-    scalar(`select count(*) n from public.projects where id = '${proj}'`), 0)
-  // Sin proyecto la tarea queda huérfana: la fila existe (set null) pero la
-  // RLS de tasks exige un proyecto, así que nadie la ve ni la puede editar.
-  await expectRows('la tarea queda sin proyecto y deja de ser accesible', () =>
-    scalar(`select count(*) n from public.tasks where id = '${task}'`), 0)
-  taskOrphan = task
-})
-await expectRows('la fila de la tarea sigue existiendo con project_id null', () =>
-  scalar(`select count(*) n from public.tasks where id = '${taskOrphan}' and project_id is null`), 1)
 
 await asUserSession(uB, async () => {
   await expectBlock('un admin que no es owner no puede eliminar la organización', () =>
@@ -526,14 +566,14 @@ await expectRows('la organización ya no existe', () =>
   scalar(`select count(*) n from public.organizations where id = '${orgA}'`), 0)
 await expectRows('sus workspaces desaparecen', () =>
   scalar(`select count(*) n from public.workspaces where organization_id = '${orgA}'`), 0)
-await expectRows('sus proyectos desaparecen', () =>
+await expectRows('sus proyectos (incluido General) desaparecen', () =>
   scalar(`select count(*) n from public.projects where workspace_id = '${wsA.id}'`), 0)
 await expectRows('sus etiquetas desaparecen', () =>
   scalar(`select count(*) n from public.tags where name = 'etiqueta-A'`), 0)
 await expectRows('sus membresías e invitaciones desaparecen', () =>
   scalar(`select count(*) n from public.memberships where organization_id = '${orgA}'`), 0)
-await expectRows('las tareas de la org quedan sin proyecto', () =>
-  scalar(`select count(*) n from public.tasks where title = 'Tarea A' and project_id is null`), 1)
+await expectRows('sus tareas se eliminan, no quedan huérfanas', () =>
+  scalar(`select count(*) n from public.tasks where title = 'Tarea A'`), 0)
 
 // ------------------------------------------------------------
 console.log(`\n${passes} comprobaciones correctas, ${failures} fallidas`)

@@ -27,7 +27,7 @@ interface TaskFormProps {
   submitLabel: string
   pendingLabel?: string
   /** Proyectos y etiquetas disponibles (cargados por el padre). */
-  projects: { id: string; name: string }[]
+  projects: { id: string; name: string; is_default?: boolean }[]
   tags: Tag[]
   workspaceId: string
 }
@@ -54,7 +54,7 @@ export function TaskForm({
     defaultValues: {
       title: '',
       description: '',
-      project_id: 'none',
+      project_id: projects.find((project) => project.is_default)?.id ?? projects[0]?.id ?? '',
       priority: 'medium',
       status: 'pending',
       due_date: '',
@@ -100,10 +100,9 @@ export function TaskForm({
             render={({ field }) => (
               <Select value={field.value} onValueChange={field.onChange}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Sin proyecto" />
+                  <SelectValue placeholder="Elige un proyecto" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">Sin proyecto</SelectItem>
                   {projects.map((project) => (
                     <SelectItem key={project.id} value={project.id}>
                       {project.name}
@@ -113,6 +112,9 @@ export function TaskForm({
               </Select>
             )}
           />
+          {errors.project_id && (
+            <p className="text-sm text-destructive">{errors.project_id.message}</p>
+          )}
         </div>
 
         <div className="space-y-2">

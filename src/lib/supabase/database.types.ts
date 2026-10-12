@@ -61,6 +61,8 @@ export interface Database {
           workspace_id: string
           name: string
           description: string | null
+          /** Proyecto "General" del workspace: no se elimina y recibe las tareas de los proyectos borrados. */
+          is_default: boolean
           created_at: string
           updated_at: string
         }
@@ -69,6 +71,8 @@ export interface Database {
           workspace_id: string
           name: string
           description?: string | null
+          /** Lo crea el sistema; la RLS rechaza `true` desde el cliente. */
+          is_default?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -77,6 +81,7 @@ export interface Database {
           workspace_id?: string
           name?: string
           description?: string | null
+          is_default?: boolean
           created_at?: string
           updated_at?: string
         }

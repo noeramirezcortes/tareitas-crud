@@ -35,7 +35,7 @@ export function TaskFormDialog({ open, onOpenChange, task }: TaskFormDialogProps
     const input = {
       title: values.title,
       description: values.description ? values.description : null,
-      project_id: values.project_id === 'none' ? null : values.project_id,
+      project_id: values.project_id,
       priority: values.priority,
       status: values.status,
       due_date: values.due_date ? values.due_date : null,
@@ -60,14 +60,14 @@ export function TaskFormDialog({ open, onOpenChange, task }: TaskFormDialogProps
         </DialogHeader>
 
         {/* Render condicional: reinicia el estado del formulario en cada apertura */}
-        {open && workspaceId && (
+        {open && workspaceId && projects && (
           <TaskForm
             defaultValues={
               task
                 ? {
                     title: task.title,
                     description: task.description ?? '',
-                    project_id: task.project_id ?? 'none',
+                    project_id: task.project_id ?? '',
                     priority: task.priority,
                     status: task.status,
                     due_date: task.due_date ?? '',
@@ -78,7 +78,7 @@ export function TaskFormDialog({ open, onOpenChange, task }: TaskFormDialogProps
             onSubmit={handleSubmit}
             isPending={isPending}
             submitLabel={isEditing ? 'Guardar cambios' : 'Crear tarea'}
-            projects={projects ?? []}
+            projects={projects}
             tags={tags ?? []}
             workspaceId={workspaceId}
           />

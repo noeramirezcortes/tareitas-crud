@@ -34,9 +34,18 @@ export function ProjectsPage() {
     setFormOpen(true)
   }
 
+  const defaultProject = projects?.find((project) => project.is_default)
+
   const confirmDelete = () => {
     if (!deleting) return
-    deleteProject.mutate(deleting.id, { onSuccess: () => setDeleting(null) })
+    deleteProject.mutate(
+      {
+        id: deleting.id,
+        taskCount: deleting.taskCount,
+        defaultName: defaultProject?.name ?? 'General',
+      },
+      { onSuccess: () => setDeleting(null) },
+    )
   }
 
   return (
@@ -99,15 +108,17 @@ export function ProjectsPage() {
                     >
                       <Pencil className="size-4" />
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setDeleting(project)}
-                      aria-label={`Eliminar ${project.name}`}
-                      className="size-8 text-destructive hover:text-destructive"
-                    >
-                      <Trash2 className="size-4" />
-                    </Button>
+                    {!project.is_default && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setDeleting(project)}
+                        aria-label={`Eliminar ${project.name}`}
+                        className="size-8 text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="size-4" />
+                      </Button>
+                    )}
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-2">
@@ -116,9 +127,12 @@ export function ProjectsPage() {
                       {project.description}
                     </p>
                   )}
-                  <Badge variant="secondary">
-                    {project.taskCount} {project.taskCount === 1 ? 'tarea' : 'tareas'}
-                  </Badge>
+                  <div className="flex flex-wrap gap-2">
+                    <Badge variant="secondary">
+                      {project.taskCount} {project.taskCount === 1 ? 'tarea' : 'tareas'}
+                    </Badge>
+                    {project.is_default && <Badge variant="outline">Por defecto</Badge>}
+                  </div>
                 </CardContent>
               </Card>
             </li>
@@ -136,7 +150,7 @@ export function ProjectsPage() {
           deleting
             ? `"${deleting.name}" se eliminará. Sus ${deleting.taskCount} ${
                 deleting.taskCount === 1 ? 'tarea' : 'tareas'
-              } quedarán sin proyecto y dejarán de ser accesibles.`
+              } se moverán a ${defaultProject?.name ?? 'General'}.`
             : undefined
         }
         confirmLabel={deleteProject.isPending ? 'Eliminando…' : 'Eliminar'}

@@ -37,15 +37,27 @@ export function useUpdateProject() {
   })
 }
 
+interface DeleteProjectInput {
+  id: string
+  /** Tareas que tenía el proyecto (el servidor las mueve al proyecto por defecto). */
+  taskCount: number
+  /** Nombre del proyecto por defecto, para el aviso. */
+  defaultName: string
+}
+
 export function useDeleteProject() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (id: string) => deleteProject(id),
-    onSuccess: () => {
+    mutationFn: ({ id }: DeleteProjectInput) => deleteProject(id),
+    onSuccess: (_data, { taskCount, defaultName }) => {
       queryClient.invalidateQueries({ queryKey: projectKeys.all })
       queryClient.invalidateQueries({ queryKey: taskKeys.all })
-      toast.success('Proyecto eliminado')
+      toast.success(
+        taskCount > 0
+          ? `Proyecto eliminado. ${taskCount} ${taskCount === 1 ? 'tarea se movió' : 'tareas se movieron'} a ${defaultName}.`
+          : 'Proyecto eliminado',
+      )
     },
     onError: () => {
       toast.error('No se pudo eliminar el proyecto')

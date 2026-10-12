@@ -140,8 +140,8 @@ export function OrganizationPage() {
               <div className="space-y-2">
                 <h3 className="text-sm font-medium">Workspaces</h3>
                 <p className="text-sm text-muted-foreground">
-                  Borrar un workspace elimina sus proyectos y etiquetas, y sus tareas dejan de ser
-                  accesibles. El último workspace no se puede borrar.
+                  Borrar un workspace elimina sus proyectos, etiquetas y tareas. El último workspace
+                  no se puede borrar.
                 </p>
                 <ul className="space-y-2">
                   {orgWorkspaces.map((ws) => (
@@ -164,7 +164,7 @@ export function OrganizationPage() {
                 <h3 className="text-sm font-medium">Organización</h3>
                 <p className="text-sm text-muted-foreground">
                   Eliminar la organización borra todo lo que contiene: workspaces, proyectos, etiquetas,
-                  miembros e invitaciones. Sus tareas dejan de ser accesibles. Esta acción no se puede deshacer.
+                  tareas, miembros e invitaciones. Esta acción no se puede deshacer.
                 </p>
                 <Button variant="destructive" size="sm" onClick={() => setOrgDeleteOpen(true)}>
                   <Trash2 className="size-4" aria-hidden="true" />
@@ -180,7 +180,7 @@ export function OrganizationPage() {
             title={`Eliminar workspace "${workspaceToDelete?.name ?? ''}"`}
             description={
               workspaceContents.data
-                ? `Se eliminarán ${workspaceContents.data.projects} proyectos y ${workspaceContents.data.tags} etiquetas. Sus ${workspaceContents.data.tasks} tareas dejarán de ser accesibles.`
+                ? `Se eliminarán ${workspaceContents.data.projects} proyectos, ${workspaceContents.data.tags} etiquetas y ${workspaceContents.data.tasks} ${workspaceContents.data.tasks === 1 ? 'tarea' : 'tareas'}. Esta acción no se puede deshacer.`
                 : 'Calculando el contenido…'
             }
             confirmLabel="Eliminar workspace"
@@ -200,7 +200,7 @@ export function OrganizationPage() {
             open={orgDeleteOpen}
             onOpenChange={setOrgDeleteOpen}
             title={`Eliminar organización "${currentOrganization.name}"`}
-            description="Se eliminarán la organización y todo su contenido (workspaces, proyectos, etiquetas, miembros e invitaciones). Sus tareas dejarán de ser accesibles. Esta acción no se puede deshacer."
+            description="Se eliminarán la organización y todo su contenido (workspaces, proyectos, etiquetas, tareas, miembros e invitaciones). Esta acción no se puede deshacer."
             confirmLabel="Eliminar definitivamente"
             destructive
             onConfirm={() =>

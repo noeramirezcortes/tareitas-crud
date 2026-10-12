@@ -80,7 +80,6 @@ export function TasksFilters() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos los proyectos</SelectItem>
-            <SelectItem value="none">Sin proyecto</SelectItem>
             {projects?.map((project) => (
               <SelectItem key={project.id} value={project.id}>
                 {project.name}

@@ -36,7 +36,7 @@ export async function countWorkspaceContents(
   workspaceId: string,
 ): Promise<{ projects: number; tags: number; tasks: number }> {
   const [projects, tags] = await Promise.all([
-    supabase.from('projects').select('id, tasks(count)').eq('workspace_id', workspaceId),
+    supabase.from('projects').select('id, is_default, tasks(count)').eq('workspace_id', workspaceId),
     supabase.from('tags').select('id', { count: 'exact', head: true }).eq('workspace_id', workspaceId),
   ])
 
@@ -44,5 +44,7 @@ export async function countWorkspaceContents(
   if (tags.error) throw tags.error
 
   const tasks = projects.data.reduce((total, p) => total + (p.tasks[0]?.count ?? 0), 0)
-  return { projects: projects.data.length, tags: tags.count ?? 0, tasks }
+  // "General" no cuenta: existe siempre y no es algo que el usuario creó.
+  const userProjects = projects.data.filter((project) => !project.is_default).length
+  return { projects: userProjects, tags: tags.count ?? 0, tasks }
 }

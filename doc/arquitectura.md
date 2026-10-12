@@ -39,6 +39,12 @@
 > actual). Al borrar un workspace/proyecto/organización las tareas conservan la
 > fila con `project_id = null` pero la RLS de `tasks` exige proyecto, así que
 > **dejan de ser accesibles** (decisión pendiente: ver `FASE3-PENDIENTES.md`).
+>
+> **Proyecto General (2026-10-11, `…000006`):** cada workspace tiene un proyecto
+> por defecto (`projects.is_default`, índice único parcial). Las tareas siempre
+> pertenecen a un proyecto; al borrar un proyecto sus tareas pasan a General
+> (trigger `BEFORE DELETE`) y al borrar el workspace se eliminan en cascada
+> (`tasks.project_id` es `on delete cascade`, ya no `set null`).
 > `workspaces_select` acepta también a admins por `organization_id` para que
 > `insert … returning` funcione. Verificación: `pnpm test:rls` (PGlite, 104
 > comprobaciones) y CI en GitHub Actions.

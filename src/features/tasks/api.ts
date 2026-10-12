@@ -42,9 +42,8 @@ export async function listTasks(filters: TaskFilters = {}): Promise<TaskWithRela
       query = query.or(`title.ilike.%${escaped}%,description.ilike.%${escaped}%`)
     }
   }
-  if (filters.projectId === 'none') {
-    query = query.is('project_id', null)
-  } else if (filters.projectId) {
+  // 'none' lo usaban enlaces antiguos (?project=none): ya no existe "sin proyecto".
+  if (filters.projectId && filters.projectId !== 'none') {
     query = query.eq('project_id', filters.projectId)
   }
   if (filters.priority) {

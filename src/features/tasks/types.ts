@@ -39,7 +39,7 @@ export interface TaskWithRelations extends Task {
 /** Filtros de la lista de tareas. Se aplican en servidor (PostgREST). */
 export interface TaskFilters {
   text?: string
-  /** uuid de proyecto, o 'none' para tareas sin proyecto. */
+  /** uuid de proyecto. */
   projectId?: string
   priority?: TaskPriority
   status?: TaskStatus
