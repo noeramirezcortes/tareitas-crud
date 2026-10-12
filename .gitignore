@@ -36,3 +36,6 @@ Thumbs.db
 supabase/.branches/
 supabase/.temp/
 supabase/.env
+
+# Herramientas de IA locales
+.commandcode/

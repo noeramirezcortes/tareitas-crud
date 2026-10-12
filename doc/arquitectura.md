@@ -28,6 +28,20 @@
 > UI: selector organización/workspace, invitaciones por email, gestión miembros/roles.
 > Migración: `20261010000000_fase3_multitenant.sql` con backfill automático de
 > org/workspace personal para usuarios existentes.
+>
+> **Cierre de Fase 3 (2026-10-11):** migraciones `20261012000000`–`…000005`.
+> Reglas de integridad: una organización nunca queda sin owner (trigger) ni sin
+> workspace (trigger); un miembro puede salir de la organización
+> (`memberships_delete_self`); `organizations.owner_id` es solo "creador
+> histórico" y no autoriza; invitar pasa por la RPC `create_invitation`
+> (reinvita tras expirar, rechaza duplicados vigentes y miembros existentes);
+> borrar una organización pasa por la RPC `delete_organization` (solo owner
+> actual). Al borrar un workspace/proyecto/organización las tareas conservan la
+> fila con `project_id = null` pero la RLS de `tasks` exige proyecto, así que
+> **dejan de ser accesibles** (decisión pendiente: ver `FASE3-PENDIENTES.md`).
+> `workspaces_select` acepta también a admins por `organization_id` para que
+> `insert … returning` funcione. Verificación: `pnpm test:rls` (PGlite, 104
+> comprobaciones) y CI en GitHub Actions.
 
 ---
 
