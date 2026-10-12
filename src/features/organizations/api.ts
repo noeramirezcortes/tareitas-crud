@@ -28,3 +28,15 @@ export async function createOrganization(name: string): Promise<string> {
   if (error) throw error
   return data
 }
+
+/**
+ * Elimina la organización completa vía RPC (solo el owner actual).
+ * La cascada borra sus workspaces, proyectos, etiquetas, membresías e
+ * invitaciones; sus tareas conservan la fila sin proyecto, pero la RLS
+ * impide acceder a ellas.
+ */
+export async function deleteOrganization(organizationId: string): Promise<void> {
+  const { error } = await supabase.rpc('delete_organization', { p_org: organizationId })
+
+  if (error) throw error
+}

@@ -1,7 +1,9 @@
-import { Plus } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
+import { Plus, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 
+import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 import { EmptyState } from '@/components/common/EmptyState'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { Badge } from '@/components/ui/badge'
@@ -11,8 +13,11 @@ import { useSession } from '@/features/auth/hooks/useSession'
 import { InvitationsPanel } from '@/features/invitations/components/InvitationsPanel'
 import { MembersPanel } from '@/features/memberships/components/MembersPanel'
 import { useMembers } from '@/features/memberships/hooks/useMembers'
+import { useDeleteOrganization } from '@/features/organizations/hooks/useOrganizationMutations'
 import type { OrgRole } from '@/features/organizations/types'
 import { WorkspaceFormDialog } from '@/features/workspaces/components/WorkspaceFormDialog'
+import { useDeleteWorkspace } from '@/features/workspaces/hooks/useWorkspaceMutations'
+import { countWorkspaceContents } from '@/features/workspaces/api'
 import { useWorkspace } from '@/features/workspaces/WorkspaceContext'
 
 const ROLE_LABELS: Record<OrgRole, string> = {
@@ -27,6 +32,15 @@ export function OrganizationPage() {
   const { currentOrganization, orgWorkspaces, currentWorkspace, selectWorkspace, refresh, isLoading } = useWorkspace()
   const members = useMembers(currentOrganization?.id ?? null)
   const [workspaceDialogOpen, setWorkspaceDialogOpen] = useState(false)
+  const [workspaceToDelete, setWorkspaceToDelete] = useState<{ id: string; name: string } | null>(null)
+  const [orgDeleteOpen, setOrgDeleteOpen] = useState(false)
+  const deleteWorkspace = useDeleteWorkspace()
+  const deleteOrganization = useDeleteOrganization()
+  const workspaceContents = useQuery({
+    queryKey: ['workspace-contents', workspaceToDelete?.id],
+    queryFn: () => countWorkspaceContents(workspaceToDelete!.id),
+    enabled: workspaceToDelete !== null,
+  })
 
   // Tras salir de la organización, el contexto cae a la primera disponible.
   const handleLeftOrganization = async () => {
@@ -116,6 +130,90 @@ export function OrganizationPage() {
             Volver al dashboard
           </Link>
         </p>
+      )}
+
+      {isOwner && (
+        <section className="space-y-3">
+          <h2 className="text-lg font-semibold text-destructive">Zona de peligro</h2>
+          <Card className="border-destructive/50">
+            <CardContent className="space-y-6 pt-6">
+              <div className="space-y-2">
+                <h3 className="text-sm font-medium">Workspaces</h3>
+                <p className="text-sm text-muted-foreground">
+                  Borrar un workspace elimina sus proyectos y etiquetas, y sus tareas dejan de ser
+                  accesibles. El último workspace no se puede borrar.
+                </p>
+                <ul className="space-y-2">
+                  {orgWorkspaces.map((ws) => (
+                    <li key={ws.id} className="flex items-center justify-between gap-3">
+                      <span className="truncate text-sm">{ws.name}</span>
+                      {orgWorkspaces.length > 1 ? (
+                        <Button variant="outline" size="sm" onClick={() => setWorkspaceToDelete(ws)}>
+                          <Trash2 className="size-4" aria-hidden="true" />
+                          Eliminar
+                        </Button>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">Último workspace: no se puede borrar</span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="space-y-2">
+                <h3 className="text-sm font-medium">Organización</h3>
+                <p className="text-sm text-muted-foreground">
+                  Eliminar la organización borra todo lo que contiene: workspaces, proyectos, etiquetas,
+                  miembros e invitaciones. Sus tareas dejan de ser accesibles. Esta acción no se puede deshacer.
+                </p>
+                <Button variant="destructive" size="sm" onClick={() => setOrgDeleteOpen(true)}>
+                  <Trash2 className="size-4" aria-hidden="true" />
+                  Eliminar organización
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          <ConfirmDialog
+            open={workspaceToDelete !== null}
+            onOpenChange={(open) => !open && setWorkspaceToDelete(null)}
+            title={`Eliminar workspace "${workspaceToDelete?.name ?? ''}"`}
+            description={
+              workspaceContents.data
+                ? `Se eliminarán ${workspaceContents.data.projects} proyectos y ${workspaceContents.data.tags} etiquetas. Sus ${workspaceContents.data.tasks} tareas dejarán de ser accesibles.`
+                : 'Calculando el contenido…'
+            }
+            confirmLabel="Eliminar workspace"
+            destructive
+            onConfirm={() =>
+              workspaceToDelete &&
+              deleteWorkspace.mutate(workspaceToDelete.id, {
+                onSuccess: async () => {
+                  setWorkspaceToDelete(null)
+                  await refresh()
+                },
+              })
+            }
+          />
+
+          <ConfirmDialog
+            open={orgDeleteOpen}
+            onOpenChange={setOrgDeleteOpen}
+            title={`Eliminar organización "${currentOrganization.name}"`}
+            description="Se eliminarán la organización y todo su contenido (workspaces, proyectos, etiquetas, miembros e invitaciones). Sus tareas dejarán de ser accesibles. Esta acción no se puede deshacer."
+            confirmLabel="Eliminar definitivamente"
+            destructive
+            onConfirm={() =>
+              deleteOrganization.mutate(currentOrganization.id, {
+                onSuccess: async () => {
+                  setOrgDeleteOpen(false)
+                  await refresh()
+                  navigate('/dashboard')
+                },
+              })
+            }
+          />
+        </section>
       )}
 
       <WorkspaceFormDialog

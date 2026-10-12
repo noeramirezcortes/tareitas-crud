@@ -290,6 +290,18 @@ export interface Database {
     }
     Views: Record<string, never>
     Functions: {
+      user_has_workspace_access: {
+        Args: { ws_id: string }
+        Returns: boolean
+      }
+      user_is_org_admin: {
+        Args: { org_id: string }
+        Returns: boolean
+      }
+      user_is_org_owner: {
+        Args: { org_id: string }
+        Returns: boolean
+      }
       create_organization: {
         Args: { p_name: string }
         Returns: string
@@ -310,6 +322,10 @@ export interface Database {
           role: 'owner' | 'admin' | 'member'
           created_at: string
         }[]
+      }
+      delete_organization: {
+        Args: { p_org: string }
+        Returns: undefined
       }
     }
     Enums: {

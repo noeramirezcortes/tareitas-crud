@@ -3,7 +3,7 @@ import { toast } from 'sonner'
 
 import { workspaceKeys } from '@/features/workspaces/api'
 
-import { createOrganization, organizationKeys } from '../api'
+import { createOrganization, deleteOrganization, organizationKeys } from '../api'
 
 export function useCreateOrganization() {
   const queryClient = useQueryClient()
@@ -17,6 +17,23 @@ export function useCreateOrganization() {
     },
     onError: (error) => {
       toast.error(error.message || 'No se pudo crear la organización')
+    },
+  })
+}
+
+export function useDeleteOrganization() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (organizationId: string) => deleteOrganization(organizationId),
+    onSuccess: () => {
+      // Desaparecen sus workspaces, proyectos, etiquetas, miembros e
+      // invitaciones: se invalida todo el caché.
+      queryClient.invalidateQueries()
+      toast.success('Organización eliminada')
+    },
+    onError: (error) => {
+      toast.error(error.message || 'No se pudo eliminar la organización')
     },
   })
 }

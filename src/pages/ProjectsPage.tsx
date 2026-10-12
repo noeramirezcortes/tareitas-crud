@@ -136,7 +136,7 @@ export function ProjectsPage() {
           deleting
             ? `"${deleting.name}" se eliminará. Sus ${deleting.taskCount} ${
                 deleting.taskCount === 1 ? 'tarea' : 'tareas'
-              } NO se borrarán: quedarán sin proyecto.`
+              } quedarán sin proyecto y dejarán de ser accesibles.`
             : undefined
         }
         confirmLabel={deleteProject.isPending ? 'Eliminando…' : 'Eliminar'}

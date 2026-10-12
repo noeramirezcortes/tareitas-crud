@@ -479,5 +479,62 @@ await expectRows('E conserva el rol admin (no se degrada por invitación)', () =
   scalar(`select count(*) n from public.memberships where user_id = '${uE}' and organization_id = '${orgA}' and role = 'admin'`), 1)
 
 // ------------------------------------------------------------
+console.log('\n== 12. Eliminar workspaces y organizaciones ==')
+// orgB (personal de B) tiene un único workspace.
+await asUserTx(uB, async () => {
+  await expectBlock('no se puede borrar el último workspace', () =>
+    db.query(`delete from public.workspaces where id = $1`, [wsB.id]),
+    'al menos un workspace')
+})
+
+// Con dos workspaces, borrar uno funciona: el proyecto muere en cascada
+// y la tarea sobrevive con project_id = null.
+let taskOrphan = null
+await asUserSession(uB, async () => {
+  // insert ... returning: regresión de workspaces_select (migración …000004).
+  const w2 = (await one(`insert into public.workspaces (organization_id, name) values ($1, 'Temporal') returning id`, [orgB])).id
+  const proj = (await one(`insert into public.projects (workspace_id, name) values ($1, 'Proy temporal') returning id`, [w2])).id
+  const task = (await one(`insert into public.tasks (project_id, title) values ($1, 'Tarea temporal') returning id`, [proj])).id
+  await expectRows('con dos workspaces, borrar uno funciona', () =>
+    rowsOf(`delete from public.workspaces where id = $1 returning id`, [w2]), 1)
+  await expectRows('su proyecto se borra en cascada', () =>
+    scalar(`select count(*) n from public.projects where id = '${proj}'`), 0)
+  // Sin proyecto la tarea queda huérfana: la fila existe (set null) pero la
+  // RLS de tasks exige un proyecto, así que nadie la ve ni la puede editar.
+  await expectRows('la tarea queda sin proyecto y deja de ser accesible', () =>
+    scalar(`select count(*) n from public.tasks where id = '${task}'`), 0)
+  taskOrphan = task
+})
+await expectRows('la fila de la tarea sigue existiendo con project_id null', () =>
+  scalar(`select count(*) n from public.tasks where id = '${taskOrphan}' and project_id is null`), 1)
+
+await asUserSession(uB, async () => {
+  await expectBlock('un admin que no es owner no puede eliminar la organización', () =>
+    db.query('select public.delete_organization($1)', [orgA]),
+    'Solo un owner')
+})
+await asUserSession(uC, async () => {
+  await expectBlock('quien ya no pertenece no puede eliminar la organización', () =>
+    db.query('select public.delete_organization($1)', [orgA]),
+    'Solo un owner')
+})
+await asUserSession(uA, async () => {
+  await db.query('select public.delete_organization($1)', [orgA])
+  ok('el owner elimina su organización')
+})
+await expectRows('la organización ya no existe', () =>
+  scalar(`select count(*) n from public.organizations where id = '${orgA}'`), 0)
+await expectRows('sus workspaces desaparecen', () =>
+  scalar(`select count(*) n from public.workspaces where organization_id = '${orgA}'`), 0)
+await expectRows('sus proyectos desaparecen', () =>
+  scalar(`select count(*) n from public.projects where workspace_id = '${wsA.id}'`), 0)
+await expectRows('sus etiquetas desaparecen', () =>
+  scalar(`select count(*) n from public.tags where name = 'etiqueta-A'`), 0)
+await expectRows('sus membresías e invitaciones desaparecen', () =>
+  scalar(`select count(*) n from public.memberships where organization_id = '${orgA}'`), 0)
+await expectRows('las tareas de la org quedan sin proyecto', () =>
+  scalar(`select count(*) n from public.tasks where title = 'Tarea A' and project_id is null`), 1)
+
+// ------------------------------------------------------------
 console.log(`\n${passes} comprobaciones correctas, ${failures} fallidas`)
 process.exit(failures === 0 ? 0 : 1)
