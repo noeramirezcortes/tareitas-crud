@@ -12,6 +12,9 @@ dist-ssr/
 .env.*.local
 !.env.example
 
+# Secretos locales de las Edge Functions (plantilla: .env.example)
+supabase/functions/.env
+
 # Playwright
 playwright-report/
 test-results/

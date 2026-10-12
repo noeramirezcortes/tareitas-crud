@@ -31,6 +31,8 @@ jobs:
       - run: pnpm build
       # Migraciones + políticas RLS sobre PGlite (en memoria, sin Supabase).
       - run: pnpm test:rls
+      # Edge Functions de billing: firma del webhook (SDK real de Stripe) y acciones.
+      - run: pnpm test:functions
 
   # Pruebas de UI (Playwright) contra un Supabase local en Docker.
   e2e:

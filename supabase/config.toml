@@ -383,6 +383,11 @@ inspector_port = 8083
 # The Deno major version to use.
 deno_version = 2
 
+# El webhook lo llama Stripe, no un usuario: no lleva JWT. Su autenticidad
+# la garantiza la firma (STRIPE_WEBHOOK_SECRET). Las demás funciones exigen sesión.
+[functions.stripe-webhook]
+verify_jwt = false
+
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 

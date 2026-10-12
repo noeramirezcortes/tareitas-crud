@@ -19,5 +19,13 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["vite.config.ts", "playwright.config.ts", "e2e"]
+  "include": [
+    "vite.config.ts",
+    "playwright.config.ts",
+    "e2e",
+    "supabase/functions/_shared/http.ts",
+    "supabase/functions/_shared/webhook.ts",
+    "supabase/functions/_shared/actions.ts",
+    "supabase/functions/_shared/billing.test.ts"
+  ]
 }
