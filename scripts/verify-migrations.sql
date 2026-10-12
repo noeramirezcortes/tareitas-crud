@@ -39,7 +39,11 @@ from (
       exists (select 1 from information_schema.columns
               where table_schema = 'public' and table_name = 'projects'
                 and column_name = 'is_default')
-      and exists (select 1 from pg_trigger where tgname = 'workspaces_create_default_project'))
+      and exists (select 1 from pg_trigger where tgname = 'workspaces_create_default_project')),
+    ('20261012000007_organizations_select_members',
+      exists (select 1 from pg_policies
+              where schemaname = 'public' and tablename = 'organizations'
+                and policyname = 'organizations_select' and qual not like '%owner_id%'))
 ) as m (migracion, aplicada)
 order by migracion;
 

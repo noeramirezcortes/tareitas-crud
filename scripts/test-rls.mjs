@@ -408,6 +408,25 @@ await asUserTx(uC, async () => {
 // C vuelve a entrar en orgA (como member) para las secciones siguientes.
 await db.query("insert into public.memberships (user_id, organization_id, role) values ($1, $2, 'member')", [uC, orgA])
 
+console.log('\n== 10a. El creador que sale ya no ve la organización ==')
+// Org temporal creada "a mano" con owner_id = C (el trigger le da la membresía owner).
+const tmpOrg = (await one(
+  `insert into public.organizations (name, owner_id) values ('Org temporal', $1) returning id`, [uC])).id
+await db.query("insert into public.memberships (user_id, organization_id, role) values ($1, $2, 'owner')", [uB, tmpOrg])
+await asUserTx(uC, async () => {
+  await expectRows('el creador ve su organización mientras es miembro', () =>
+    scalar(`select count(*) n from public.organizations where id = '${tmpOrg}'`), 1)
+})
+await asUserSession(uC, async () => {
+  await expectRows('el creador sale (hay otro owner)', () =>
+    rowsOf(`delete from public.memberships where user_id = $1 and organization_id = $2 returning user_id`, [uC, tmpOrg]), 1)
+})
+await asUserTx(uC, async () => {
+  await expectRows('tras salir, el creador (owner_id) ya no ve la organización', () =>
+    scalar(`select count(*) n from public.organizations where id = '${tmpOrg}'`), 0)
+})
+await db.query('delete from public.organizations where id = $1', [tmpOrg])
+
 console.log('\n== 10b. Solo un owner crea membresías owner ==')
 await asUserTx(uB, async () => {
   await expectBlock('admin no puede crear membresías con rol owner', () =>
