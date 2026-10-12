@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 
 import {
   Card,
@@ -11,6 +11,8 @@ import {
 import { RegisterForm } from '@/features/auth/components/RegisterForm'
 
 export function RegisterPage() {
+  const location = useLocation()
+
   return (
     <main className="flex min-h-screen items-center justify-center bg-background p-4">
       <Card className="w-full max-w-sm">
@@ -23,7 +25,7 @@ export function RegisterPage() {
         </CardContent>
         <CardFooter className="justify-center text-sm text-muted-foreground">
           ¿Ya tienes cuenta?{' '}
-          <Link to="/login" className="ml-1 font-medium text-primary hover:underline">
+          <Link to="/login" state={location.state} className="ml-1 font-medium text-primary hover:underline">
             Inicia sesión
           </Link>
         </CardFooter>

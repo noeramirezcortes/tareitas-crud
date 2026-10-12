@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
@@ -8,12 +8,17 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
 import { useRegister } from '../hooks/useRegister'
+import { getRedirectFrom } from '../redirect'
 import { registerSchema } from '../schemas'
 import type { RegisterValues } from '../schemas'
 
 export function RegisterForm() {
   const navigate = useNavigate()
+  const location = useLocation()
   const registerMutation = useRegister()
+
+  // Ruta a la que el usuario quería ir (p. ej. /invite/:token) antes de registrarse.
+  const from = getRedirectFrom(location.state)
 
   const {
     register,
@@ -24,16 +29,19 @@ export function RegisterForm() {
   })
 
   const onSubmit = handleSubmit((values) => {
-    registerMutation.mutate(values, {
+    // El correo de confirmación debe llevar de vuelta al destino original.
+    const redirectTo = from ? `${window.location.origin}${from}` : undefined
+
+    registerMutation.mutate({ ...values, redirectTo }, {
       onSuccess: (data) => {
         if (data.session) {
           // Confirmación de email desactivada → sesión inmediata
           toast.success('Cuenta creada. ¡Bienvenido!')
-          navigate('/dashboard', { replace: true })
+          navigate(from ?? '/dashboard', { replace: true })
         } else {
           // Confirmación de email activada (default de Supabase)
           toast.info('Revisa tu correo para confirmar la cuenta y luego inicia sesión.')
-          navigate('/login', { replace: true })
+          navigate('/login', { replace: true, state: location.state })
         }
       },
     })

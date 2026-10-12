@@ -89,6 +89,24 @@ supabase link --project-ref TU-PROJECT-REF
 
 ---
 
+## Redirect URLs (registro desde una invitación)
+
+Cuando alguien sin cuenta abre un enlace `/invite/:token` y se registra, la app
+pide a Supabase que el correo de confirmación lo lleve de vuelta a ese enlace
+(`emailRedirectTo`). Para que funcione hay que permitir la URL:
+
+1. Supabase Dashboard → **Authentication → URL Configuration**.
+2. En **Redirect URLs** añade, para cada entorno:
+   - `http://localhost:5173/**` (desarrollo)
+   - `https://TU-DOMINIO/**` (producción)
+3. Guarda.
+
+> Si la URL no está en la lista, Supabase no falla: usa el **Site URL** y el
+> invitado aterriza en la raíz en vez de en la invitación. Sin confirmación de
+> email activada este paso no hace falta: la app vuelve a la invitación sola.
+
+---
+
 ## Checklist final
 
 - [ ] Proyecto `tareitas` activo en supabase.com

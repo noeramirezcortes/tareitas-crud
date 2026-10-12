@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
 import { useLogin } from '../hooks/useLogin'
+import { getRedirectFrom } from '../redirect'
 import { loginSchema } from '../schemas'
 import type { LoginValues } from '../schemas'
 
@@ -25,7 +26,7 @@ export function LoginForm() {
   })
 
   // Ruta a la que el usuario quería ir antes de ser redirigido a /login
-  const from = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname
+  const from = getRedirectFrom(location.state)
 
   const onSubmit = handleSubmit((values) => {
     login.mutate(values, {

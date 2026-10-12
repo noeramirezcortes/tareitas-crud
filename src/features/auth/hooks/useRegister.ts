@@ -6,7 +6,8 @@ import type { RegisterValues } from '../schemas'
 
 export function useRegister() {
   return useMutation({
-    mutationFn: (values: RegisterValues) => signUp(values.email, values.password),
+    mutationFn: ({ redirectTo, ...values }: RegisterValues & { redirectTo?: string }) =>
+      signUp(values.email, values.password, redirectTo),
     onError: () => {
       toast.error('No se pudo crear la cuenta. Inténtalo de nuevo.')
     },
