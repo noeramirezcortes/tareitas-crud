@@ -98,6 +98,7 @@ pnpm db:types   # regenera src/lib/supabase/database.types.ts
 
 - Planes, límites y Stripe (modo test, variables, despliegue): `doc/guia-stripe.md`.
 - Publicación en Cloudflare con el dominio `tareitas.online`: `doc/guia-despliegue.md`.
+- Estado y pendientes de la fase: `doc/FASE4-CIERRE.md`.
 
 ## Estructura
 
